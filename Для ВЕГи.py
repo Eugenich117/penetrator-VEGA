@@ -205,77 +205,101 @@ dV = 0
 """(gravy_const*mass_planet)/R**2) - это вычисление ускорения свободного падения на конкретной высоте"""
 """функции scipy.special.sindg() считают тригонометрические величины сразу в градусах"""
 
-def dV_func(Cn, Fn, R, Px, ro, V, tetta, dt):
+def dV_func(initial):
     """вычисление скорости"""
+    S = initial['S']
+    R = initial['R']
+    Cxa = initial['Cxa']
+    ro = initial['ro']
+    V = initial['V']
+    tetta = initial['tetta']
+    Cn = initial['Cn']
+    Fn = initial['Fn']
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn))) * dt) / mass
-    return dV
+    dV = ((-mass * ((gravy_const*mass_planet) / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
+    return dV, 'V'
 
-def dL_func(V, tetta, dt):
+def dL_func(initial):
     """вычисляеем длину траектории"""
-    return V * Rb/R * scipy.special.cosdg(tetta) * dt
+    V = initial['V']
+    tetta = initial['tetta']
+    dL = V * Rb / R * m.cos(tetta)
+    return dL, 'L'
 
-def dtetta_func(Px, V, tetta, R, dt):
+def dtetta_func(initial):
     """вычисление угла наклона таектории"""
-    g=((gravy_const*mass_planet)/R**2)
-    dtetta =-((scipy.special.cosdg(tetta))*((g/V)-(V/R)))
+    V = initial['V']
+    tetta = initial['tetta']
+    R = initial['R']
+    g=((gravy_const * mass_planet) / R ** 2)
+    dtetta =-((m.cos(tetta)) * ((g / V) - (V / R)))
     #dtetta = ((-g * ((scipy.special.cosdg(tetta))/V)+(V/R))) * dt #был +
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
-    return dtetta
+    return dtetta, 'tetta'
 
-def dR_func(V, tetta, dt):
+def dR_func(initial):
     """вычисление высоты"""
-    dR = (V * scipy.special.sindg(tetta)) * dt
-    return dR
+    V = initial['V']
+    tetta = initial['tetta']
+    dR = (V * m.sin(tetta))
+    return dR, 'R'
 
 
+def runge_kutta_4(equations, initial, dt, dx):
+    '''equations - это список названий функций с уравнениями для системы
+    initial это переменные с начальными условиями
+    dx - это список переменных, которые будут использованы для интегрирования уравнения'''
+    k1 = {key: 0 for key in initial.keys()}
+    k2 = {key: 0 for key in initial.keys()}
+    k3 = {key: 0 for key in initial.keys()}
+    k4 = {key: 0 for key in initial.keys()}
 
-def runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt):
-    ic.disable()
-    """
-    Решение системы ОДУ методом Рунге-Кутты 6-го порядка.
-    """
-    # Вычисление коэффициентов k для каждой переменной
-    k1_V = dV_func(Cn, Fn, R, Px, ro, V, tetta, dt)
-    k1_tetta = dtetta_func(Px, V, tetta, R, dt)
-    k1_R = dR_func(V, tetta, dt)
-    k1_L = dL_func(V, tetta, dt)
+    derivatives_1 = {key: initial[key] for key in initial}
+    derivatives_2 = {key: initial[key] for key in initial}
+    derivatives_3 = {key: initial[key] for key in initial}
+    derivatives_4 = {key: initial[key] for key in initial}
 
-    k2_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
-    k2_tetta = dtetta_func(Px, V + k1_V / 3, tetta + k1_tetta / 3, R + k1_R / 3, dt / 3)
-    k2_R = dR_func(V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
-    k2_L = dL_func(V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
+    new_values = [0] * len(equations)
 
-    k3_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
-    k3_tetta = dtetta_func(Px, V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, R + k1_R / 6 + k2_R / 6, dt / 3)
-    k3_R = dR_func(V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
-    k3_L = dL_func(V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
+    for i, eq in enumerate(equations):
+        derivative, key = eq(initial)
+        k1[key] += derivative
+        derivatives_1[key] = initial[key] + derivative * dt / 2
+        derivatives_1[dx[i]] += dt / 2
+        # derivatives_1 = {key: value / 2 for key, value in derivatives_1.items()}
 
-    k4_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
-    k4_tetta = dtetta_func(Px, V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, R + k1_R / 8 + 3 * k3_R / 8, dt / 2)
-    k4_R = dR_func(V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
-    k4_L = dL_func(V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
+    for i, eq in enumerate(equations):
+        derivative, key = eq(derivatives_1)
+        k2[key] += derivative
+        derivatives_2[key] = initial[key] + derivative * dt / 2
+        derivatives_2[dx[i]] += dt / 2
+        # derivatives_2 = {key: value / 2 for key, value in derivatives_2.items()}
 
-    k5_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
-    k5_tetta = dtetta_func(Px, V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, R + k1_R / 2 - 3 * k3_R / 2 + 2 * k4_R, dt)
-    k5_R = dR_func(V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
-    k5_L = dL_func(V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
+    for i, eq in enumerate(equations):
+        derivative, key = eq(derivatives_2)
+        k3[key] += derivative
+        derivatives_3[key] = initial[key] + derivative * dt
+        derivatives_3[dx[i]] += dt
 
-    k6_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
-    k6_tetta = dtetta_func(Px, V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, R + k1_R / 6 + 2 * k4_R / 3 + k5_R / 6, dt * 5 / 6)
-    k6_R = dR_func(V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
-    k6_L = dL_func(V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
+    for i, eq in enumerate(equations):
+        derivative, key = eq(derivatives_3)
+        k4[key] += derivative
+        derivatives_4[key] = initial[key] + derivative * dt
+        new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
+    return new_values
 
-    V += (k1_V + 4 * k4_V + k5_V) / 6
-    tetta += (k1_tetta + 4 * k4_tetta + k5_tetta) / 6
-    R += (k1_R + 4 * k4_R + k5_R)/6
-    L += (k1_L + 4 * k4_L + k5_L)/6
-
-    return V, tetta, R, L
 
 ic.enable()
 V_sound = v_sound(R - Rb)
 mach=V/V_sound
+
+cToDeg = 180 / m.pi
+cToRad = m.pi / 180
+
+tetta *= cToRad
+initial = {}
+dx = ['V', 'L', 'tetta', 'R']
+equations = [dV_func, dL_func, dtetta_func, dR_func]
 
 while mach > 1.32:
 
@@ -286,11 +310,19 @@ while mach > 1.32:
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
-    V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
+
+    initial.update(
+        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+    values = runge_kutta_4(equations, initial, dt, dx)
+    V = values[0]
+    L = values[1]
+    tetta = values[2]
+    R = values[3]
     t += dt
+
     mach=V/V_sound
     CX.append(Cxa)
-    TETTA.append(tetta)
+    TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
@@ -300,10 +332,9 @@ while mach > 1.32:
     nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2)))
     PX.append(Px)
 
-ic(V, tetta, R, L, t)
 V_sound = v_sound(R - Rb)
 mach = V/V_sound
-print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
+print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
 
 while mach > 0.74:
     """этап 2 спуск на паращюте увода """
@@ -312,12 +343,19 @@ while mach > 0.74:
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
-    V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
+
+    initial.update(
+        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+    values = runge_kutta_4(equations, initial, dt, dx)
+    V = values[0]
+    L = values[1]
+    tetta = values[2]
+    R = values[3]
     t += dt
+
     mach=V/V_sound
-    ic(V, tetta, R, L, t)
     CX.append(Cxa)
-    TETTA.append(tetta)
+    TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
@@ -327,24 +365,30 @@ while mach > 0.74:
     nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2)))
     PX.append(Px)
 
-ic(V, tetta, R, L, t)
 V_sound = v_sound(R - Rb)
 mach=V/V_sound
-print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
+print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
 
 
-while t <= 91: #было 70 по циклограмме
+while t <= 71: #было 70 по циклограмме
     """третий этап спуск с верхней полусферой на парашюте увода"""
     S, Cn, Fn, mass = 4.155, 0.65, 6, 375
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 1.28
     Px = mass / Cxa * S
-    V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
+
+    initial.update(
+        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+    values = runge_kutta_4(equations, initial, dt, dx)
+    V = values[0]
+    L = values[1]
+    tetta = values[2]
+    R = values[3]
     t += dt
-    ic(V, tetta, R, L, t)
+
     CX.append(Cxa)
-    TETTA.append(tetta)
+    TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
@@ -356,22 +400,28 @@ while t <= 91: #было 70 по циклограмме
 
 V_sound = v_sound(R - Rb)
 mach=V/V_sound
-print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
+print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
 
-ic(V, tetta, R, L, t)
 
-while t <= 251: #while mach > 0.14: # # было 220 по циклограмме
+while t <= 231: #while mach > 0.14: # # было 220 по циклограмме
     """четвертый этап спуск на стабилизирующем парашюте"""
     S, Cn, Fn, mass = 2.895, 0.78, 1.5, 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58
     Px = mass / Cxa * S
-    V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
+
+    initial.update(
+        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+    values = runge_kutta_4(equations, initial, dt, dx)
+    V = values[0]
+    L = values[1]
+    tetta = values[2]
+    R = values[3]
     t += dt
-    ic(V, tetta, R, L, t)
+
     CX.append(Cxa)
-    TETTA.append(tetta)
+    TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
@@ -382,22 +432,28 @@ while t <= 251: #while mach > 0.14: # # было 220 по циклограмме
     PX.append(Px)
 V_sound = v_sound(R - Rb)
 mach=V/V_sound
-print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
+print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
 
-ic(V, tetta, R, L, t)
 
-while t <= 431: #while mach > 0.03: # было 400 по циклограмме
+while t <= 400: #while mach > 0.03: # было 400 по циклограмме
     """пятый этап спуск на парашюте ввода аэростата """
     S, Cn, Fn, mass= 2.895, 0.97, 35, 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58
     Px = mass / Cxa * S
-    V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
+
+    initial.update(
+        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+    values = runge_kutta_4(equations, initial, dt, dx)
+    V = values[0]
+    L = values[1]
+    tetta = values[2]
+    R = values[3]
     t += dt
-    ic(V, tetta, R, L, t)
+
     CX.append(Cxa)
-    TETTA.append(tetta)
+    TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
@@ -407,10 +463,9 @@ while t <= 431: #while mach > 0.03: # было 400 по циклограмме
     nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2)))
     PX.append(Px)
 
-ic(V, tetta, R, L, t)
 V_sound = v_sound(R - Rb)
 mach=V/V_sound
-print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach = {mach:.3f}, t = {t}')
+print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach = {mach:.3f}, t = {t}')
 
 for i in range(1, len(V_MOD)):
     derivative_value = (V_MOD[i] - V_MOD[i - 1]) / dt

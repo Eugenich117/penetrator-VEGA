@@ -472,7 +472,7 @@ for i in range(8):
         napor[i].append(0.5 * ro * V ** 2)
         nx[i].append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         PX[i].append(Px)
-    print(f'V = {V:.3f}, tetta = {tetta :.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t}')
+    print(f'V = {V:.3f}, tetta = {tetta * cToDeg :.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t}')
 
     for j in range(1, len(V_MOD[i])):
         derivative_value = (V_MOD[i][j] - V_MOD[i][j - 1]) / dt
