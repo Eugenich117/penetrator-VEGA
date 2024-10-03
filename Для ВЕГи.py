@@ -232,7 +232,7 @@ def dtetta_func(initial):
     tetta = initial['tetta']
     R = initial['R']
     g=((gravy_const * mass_planet) / R ** 2)
-    dtetta =-((m.cos(tetta)) * ((g / V) - (V / R)))
+    dtetta = -((m.cos(tetta)) * ((g / V) - (V / R)))
     #dtetta = ((-g * ((scipy.special.cosdg(tetta))/V)+(V/R))) * dt #был +
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
     return dtetta, 'tetta'

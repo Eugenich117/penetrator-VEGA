@@ -317,6 +317,7 @@ for i in range(1, len(V_MOD)):
     derivative_value = (V_MOD[i] - V_MOD[i - 1]) / dt
     acceleration.append(derivative_value)
 
+plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 plt.plot(X, Y)
 plt.title('Траектория')
 plt.xlabel('Дальность, м')

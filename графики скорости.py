@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from icecream import ic
 ic.enable()
 
-d = 0.4
+d = 4
 mass = 180
 
 g = 8.87
@@ -15,7 +15,7 @@ Cx = 0.9
 M = []
 square = []
 speed = []
-
+'''
 while mass > 0:
     V = m.sqrt((2 * mass * g) / (Cx * 64.79 * S))
     speed.append(V)
@@ -25,9 +25,10 @@ while mass > 0:
 
    
 plt.plot(M, speed)
-plt.title('Зависимость скорости от массы')
-plt.xlabel('Масса, кг')
-plt.ylabel('Скорость, м/с')
+plt.title('Зависимость скорости от массы', fontsize=16, fontname='Times New Roman')
+plt.xlabel('Масса, кг', fontsize=16, fontname='Times New Roman')
+plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
+plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 plt.grid(True)
 plt.show()
 '''
@@ -38,9 +39,9 @@ while S >= 0.12:
     S -= 0.01
 
 plt.plot(square, speed)
-plt.title('Зависимость скорости от площади миделево сечения')
-plt.xlabel('Миделево сечение, м^2')
-plt.ylabel('Скорость, м/с')
+plt.title('Зависимость скорости от площади миделево сечения', fontsize=16, fontname='Times New Roman')
+plt.xlabel('Миделево сечение, м$^2$', fontsize=16, fontname='Times New Roman')
+plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
+plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 plt.grid(True)
 plt.show()
-'''

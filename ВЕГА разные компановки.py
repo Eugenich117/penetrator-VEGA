@@ -280,48 +280,6 @@ def runge_kutta_4(equations, initial, dt, dx):
         new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
     return new_values
 
-'''def runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt):
-    ic.disable()
-    """
-    Решение системы ОДУ методом Рунге-Кутты 6-го порядка.
-    """
-    # Вычисление коэффициентов k для каждой переменной
-    k1_V = dV_func(Cn, Fn, R, Px, ro, V, tetta, dt)
-    k1_tetta = dtetta_func(Px, V, tetta, R, dt)
-    k1_R = dR_func(V, tetta, dt)
-    k1_L = dL_func(V, tetta, dt)
-
-    k2_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
-    k2_tetta = dtetta_func(Px, V + k1_V / 3, tetta + k1_tetta / 3, R + k1_R / 3, dt / 3)
-    k2_R = dR_func(V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
-    k2_L = dL_func(V + k1_V / 3, tetta + k1_tetta / 3, dt / 3)
-
-    k3_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
-    k3_tetta = dtetta_func(Px, V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, R + k1_R / 6 + k2_R / 6, dt / 3)
-    k3_R = dR_func(V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
-    k3_L = dL_func(V + k1_V / 6 + k2_V / 6, tetta + k1_tetta / 6 + k2_tetta / 6, dt / 3)
-
-    k4_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
-    k4_tetta = dtetta_func(Px, V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, R + k1_R / 8 + 3 * k3_R / 8, dt / 2)
-    k4_R = dR_func(V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
-    k4_L = dL_func(V + k1_V / 8 + 3 * k3_V / 8, tetta + k1_tetta / 8 + 3 * k3_tetta / 8, dt / 2)
-
-    k5_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
-    k5_tetta = dtetta_func(Px, V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, R + k1_R / 2 - 3 * k3_R / 2 + 2 * k4_R, dt)
-    k5_R = dR_func(V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
-    k5_L = dL_func(V + k1_V / 2 - 3 * k3_V / 2 + 2 * k4_V, tetta + k1_tetta / 2 - 3 * k3_tetta / 2 + 2 * k4_tetta, dt)
-
-    k6_V = dV_func(Cn, Fn, R, Px, ro, V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
-    k6_tetta = dtetta_func(Px, V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, R + k1_R / 6 + 2 * k4_R / 3 + k5_R / 6, dt * 5 / 6)
-    k6_R = dR_func(V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
-    k6_L = dL_func(V + k1_V / 6 + 2 * k4_V / 3 + k5_V / 6, tetta + k1_tetta / 6 + 2 * k4_tetta / 3 + k5_tetta / 6, dt * 5 / 6)
-
-    V += (k1_V + 4 * k4_V + k5_V) / 6
-    tetta += (k1_tetta + 4 * k4_tetta + k5_tetta) / 6
-    R += (k1_R + 4 * k4_R + k5_R)/6
-    L += (k1_L + 4 * k4_L + k5_L)/6
-
-    return V, tetta, R, L'''
 
 m1_list = [1750, 1765, 1780, 1795, 1810, 1825, 1840, 1855]
 m2_list = [1750, 1765, 1780, 1795, 1810, 1825, 1840, 1855]
@@ -341,6 +299,7 @@ for i in range(8):
     V, tetta, R, L = np.float64(11_000), -19 * cToRad, Rb + h, 0
     V_sound = v_sound(R - Rb)
     mach = V / V_sound
+
     while mach >= 1.32: #t <= 52:
         S, Cn, Fn = 4.52, 0, 0
         mass = m1_list[i]
@@ -367,6 +326,7 @@ for i in range(8):
         nx[i].append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         PX[i].append(Px)
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t}')
+
     while t <= 42:
         S, Cn, Fn = 4.52, 0.65, 6
         mass = m2_list[i]
@@ -478,9 +438,6 @@ for i in range(8):
         derivative_value = (V_MOD[i][j] - V_MOD[i][j - 1]) / dt
         acceleration[i].append(derivative_value)
 
-
-
-#ic(acceleration, napor, TETTA, X, Y, T, PX, nx, V_MOD)
 
 for i in range(8):
     plt.plot(X[i], Y[i], label=f'Вариант {i+1}')

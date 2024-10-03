@@ -4,13 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="подготовленный проект с верными уравнениями и системой интегрирования">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ВЕГА разные компановки.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА разные компановки.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Для ВЕГи.py" beforeDir="false" afterPath="$PROJECT_DIR$/Для ВЕГи.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/графики скорости.py" beforeDir="false" afterPath="$PROJECT_DIR$/графики скорости.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/пенетратор обновленный.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор обновленный.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/разные диаметры НТУ.py" beforeDir="false" afterPath="$PROJECT_DIR$/разные диаметры НТУ.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/тесты функций.py" beforeDir="false" afterPath="$PROJECT_DIR$/тесты функций.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,7 +32,13 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.Shaposhnikov.executor": "Run",
+    "Python.ВЕГА разные компановки.executor": "Run",
     "Python.Для ВЕГи.executor": "Run",
+    "Python.графики скорости.executor": "Run",
+    "Python.пенетратор обновленный.executor": "Run",
+    "Python.разные диаметры НТУ.executor": "Run",
+    "Python.тесты функций.executor": "Run",
     "Python.яметод Лагранжа.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -43,6 +50,11 @@
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "Python"
+    ]
   }
 }]]></component>
   <component name="RunManager">
@@ -90,7 +102,9 @@
       <workItem from="1727617773201" duration="962000" />
       <workItem from="1727623271471" duration="930000" />
       <workItem from="1727624614123" duration="6000" />
-      <workItem from="1727624872371" duration="679000" />
+      <workItem from="1727624872371" duration="6572000" />
+      <workItem from="1727688642422" duration="617000" />
+      <workItem from="1727711680816" duration="38735000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -116,7 +130,15 @@
       <option name="project" value="LOCAL" />
       <updated>1727618246714</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="подготовленный проект с верными уравнениями и системой интегрирования">
+      <option name="closed" value="true" />
+      <created>1727625739455</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1727625739455</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -126,7 +148,20 @@
     <MESSAGE value="подготовленный проект с верными уравнениями и системой интегрирования" />
     <option name="LAST_COMMIT_MESSAGE" value="подготовленный проект с верными уравнениями и системой интегрирования" />
   </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/пенетратор обновленный.py</url>
+          <line>327</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="Для ВЕГи Coverage Results" MODIFIED="1727625545927" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1727866572759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../заказы УИРС" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="разные диаметры НТУ Coverage Results" MODIFIED="1727866799732" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="тесты функций Coverage Results" MODIFIED="1727813020881" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

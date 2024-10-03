@@ -9,6 +9,7 @@ import concurrent.futures
 import threading
 import multiprocessing
 from multiprocessing import Queue, Pipe
+import random
 # мат модель из книжки воронцова упрощенная
 
 
@@ -175,8 +176,6 @@ gravy_const = 6.67 * 10 ** (-11)
 g = 8.87
 dt = 0.01
 tetta = -9
-V = np.float64(11000)  # Используем тип данняых float64
-gamma = np.float64(0)  # Используем тип данных float64
 x = 0
 y = 0
 plotnost = []; CX = []
@@ -268,9 +267,10 @@ def runge_kutta_4(equations, initial, dt, dx):
 def compute_trajectory(i, equations, dx, pipe_conn):
     #print(f"поток {i} запущен")
     t = 0
-    d = d_list[i]
+    d = 0.8
     S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = np.float64(11_000), -9 * cToRad, Rb + h, 0
+    V, tetta, R, L = random.uniform(10_800, 11_300), random.uniform(-25, -15) * cToRad, Rb + h, 0
+    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
     initial['mass'] = mass
@@ -315,7 +315,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-
+    iter = 20 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -341,22 +341,22 @@ if __name__ == '__main__':
     PX = manager.list()
     nx = manager.list()
     V_MOD = manager.list()'''
-    acceleration = ([[] for _ in range(5)])
-    napor = ([[] for _ in range(5)])
-    TETTA = ([[] for _ in range(5)])
-    X = ([[] for _ in range(5)])
-    Y = ([[] for _ in range(5)])
-    T = ([[] for _ in range(5)])
-    PX = ([[] for _ in range(5)])
-    nx = ([[] for _ in range(5)])
-    V_MOD = ([[] for _ in range(5)])
+    acceleration = ([[] for _ in range(iter)])
+    napor = ([[] for _ in range(iter)])
+    TETTA = ([[] for _ in range(iter)])
+    X = ([[] for _ in range(iter)])
+    Y = ([[] for _ in range(iter)])
+    T = ([[] for _ in range(iter)])
+    PX = ([[] for _ in range(iter)])
+    nx = ([[] for _ in range(iter)])
+    V_MOD = ([[] for _ in range(iter)])
 
     queue = Queue(maxsize=100)
     processes = []
     parent_conns = []
     child_conns = []
 
-    for i in range(5):
+    for i in range(iter):
         parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
         parent_conns.append(parent_conn)
         child_conns.append(child_conn)
@@ -369,7 +369,7 @@ if __name__ == '__main__':
         results.append(queue.get())'''
 
     # Обработка результатов
-    for i in range(5):
+    for i in range(iter):
         result = parent_conns[i].recv()
         (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
              local_acceleration) = result
@@ -383,7 +383,7 @@ if __name__ == '__main__':
         PX[i] = local_PX
         acceleration[i] = local_acceleration
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
@@ -393,7 +393,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Зависимость высоты от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
@@ -403,7 +403,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], V_MOD[i], label=f'Вариант {i+1}')
     plt.title('Зависимость модуля скорости от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Время, c", fontsize=16, fontname='Times New Roman')
@@ -413,7 +413,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(Y[i], V_MOD[i], label=f'Вариант {i+1}')
     plt.title('Зависимость модуля скорости от высоты', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Высота, м", fontsize=16, fontname='Times New Roman')
@@ -423,7 +423,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
     plt.title('Зависимость угла входа от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
@@ -433,7 +433,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], napor[i], label=f'Вариант {i+1}')
     plt.title('Зависимость скоростного напора от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     plt.show()
 
     #T.pop()# Убираем последний элемент из списка времени
-    for i in range(5):
+    for i in range(iter):
         T[i].pop()
         plt.plot(T[i], acceleration[i], label=f'Вариант {i+1}')
     plt.title('Зависимость ускорения от времени', fontsize=16, fontname='Times New Roman')
@@ -455,7 +455,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         nx[i].pop()
         plt.plot(T[i], nx[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость перегрузки от времени', fontsize=16, fontname='Times New Roman')
@@ -466,7 +466,7 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         PX[i].pop()
         plt.plot(T[i], PX[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость давления на мидель от времени', fontsize=16, fontname='Times New Roman')

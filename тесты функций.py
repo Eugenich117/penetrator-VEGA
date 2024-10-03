@@ -25,6 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import scipy
+import random
 
 
 
@@ -282,8 +283,7 @@ plt.show()
 '''
 
 
-
-while xi >= 0:
+'''while xi >= 0:
     V_sound = v_sound(R)
     Cxa = Cx(xi, V_sound)
     ic("Cx :", Cxa, xi)
@@ -296,4 +296,5 @@ while xi >= 0:
 plt.plot(T, CX)
 plt.xlabel('Скорость, м/с')
 plt.grid(True)
-plt.show()
+plt.show()'''
+
