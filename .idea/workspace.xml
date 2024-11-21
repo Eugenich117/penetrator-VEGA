@@ -7,11 +7,10 @@
     <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ВЕГА разные компановки.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА разные компановки.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Для ВЕГи.py" beforeDir="false" afterPath="$PROJECT_DIR$/Для ВЕГи.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/графики скорости.py" beforeDir="false" afterPath="$PROJECT_DIR$/графики скорости.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/пенетратор обновленный.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор обновленный.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Для ВЕГи.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/пенетратор обновленный.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/разные диаметры НТУ.py" beforeDir="false" afterPath="$PROJECT_DIR$/разные диаметры НТУ.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/тесты функций.py" beforeDir="false" afterPath="$PROJECT_DIR$/тесты функций.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,6 +33,7 @@
   "keyToString": {
     "Python.Shaposhnikov.executor": "Run",
     "Python.ВЕГА разные компановки.executor": "Run",
+    "Python.Возмущения НУ по Монте-Карло.executor": "Run",
     "Python.Для ВЕГи.executor": "Run",
     "Python.графики скорости.executor": "Run",
     "Python.пенетратор обновленный.executor": "Run",
@@ -105,6 +105,19 @@
       <workItem from="1727624872371" duration="6572000" />
       <workItem from="1727688642422" duration="617000" />
       <workItem from="1727711680816" duration="38735000" />
+      <workItem from="1731144281032" duration="43000" />
+      <workItem from="1731155307995" duration="849000" />
+      <workItem from="1731167793143" duration="4098000" />
+      <workItem from="1731336689285" duration="290000" />
+      <workItem from="1731347633629" duration="594000" />
+      <workItem from="1731410120818" duration="15000" />
+      <workItem from="1731422244762" duration="4000" />
+      <workItem from="1731650369848" duration="10000" />
+      <workItem from="1731672674340" duration="624000" />
+      <workItem from="1731673884575" duration="2474000" />
+      <workItem from="1731698821747" duration="659000" />
+      <workItem from="1731744677392" duration="49000" />
+      <workItem from="1732175745397" duration="650000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -156,12 +169,18 @@
           <line>327</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/ВЕГА разные компановки.py</url>
+          <line>211</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1727866572759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../заказы УИРС" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="разные диаметры НТУ Coverage Results" MODIFIED="1727866799732" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="ВЕГА разные компановки Coverage Results" MODIFIED="1732176337191" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1732175842086" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="тесты функций Coverage Results" MODIFIED="1727813020881" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

@@ -24,7 +24,7 @@ import random
 
 def find_closest_points_ro(x, xi):
     """
-    Находит шесть ближайших точек к xi в списке x.
+    Находит 4 ближайшие точки к xi в списке x.
     """
     closest_points = []
     for i in range(len(x)):
@@ -167,13 +167,12 @@ def v_sound(R):
 
 start_time = time.time()
 r1 = 0.4
-# d = 0.6
 mass = 180
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
 Rb = 6_051_800
 gravy_const = 6.67 * 10 ** (-11)
-g = 8.87
+g = 8.869
 dt = 0.01
 tetta = -9
 x = 0
@@ -196,7 +195,7 @@ def dV_func(initial):
     tetta = initial['tetta']
     mass = initial['mass']
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * ((gravy_const * mass_planet) / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
+    dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -209,7 +208,7 @@ def dtetta_func(initial):
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    dtetta = ((-((gravy_const * mass_planet) / R ** 2) * m.cos(tetta)) / V + (V / R))
+    dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / V + (V / R))
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
     return dtetta, 'tetta'
 
@@ -269,7 +268,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     t = 0
     d = 0.8
     S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = random.uniform(10_800, 11_300), random.uniform(-25, -15) * cToRad, Rb + h, 0
+    V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
@@ -315,7 +314,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 20 #количество итераций
+    iter = 50 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -351,18 +350,35 @@ if __name__ == '__main__':
     nx = ([[] for _ in range(iter)])
     V_MOD = ([[] for _ in range(iter)])
 
-    queue = Queue(maxsize=100)
     processes = []
     parent_conns = []
     child_conns = []
 
+    tasks = []
+
     for i in range(iter):
+        parent_conn, child_conn = multiprocessing.Pipe()  # Создаем пару для каждого процесса
+        parent_conns.append(parent_conn)
+        child_conns.append(child_conn)
+        tasks.append((i, equations, dx, child_conn))  # Формируем задачи для передачи в пул
+
+
+    # Функция обратного вызова, которая будет вызываться по завершении каждой задачи
+
+    # Создаем пул процессов
+    pool = multiprocessing.Pool(processes=30)
+
+    # Запускаем задачи асинхронно с отслеживанием завершения
+    for task in tasks:
+        pool.apply_async(compute_trajectory, task)
+
+    '''for i in range(iter):
         parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
         parent_conns.append(parent_conn)
         child_conns.append(child_conn)
         p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
         p.start()
-        processes.append(p)
+        processes.append(p)'''
 
     '''results = []
     while not queue.empty():

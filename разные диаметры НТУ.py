@@ -197,7 +197,7 @@ def dV_func(initial):
     tetta = initial['tetta']
     mass = initial['mass']
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * ((gravy_const * mass_planet) / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
+    dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -210,7 +210,7 @@ def dtetta_func(initial):
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    dtetta = ((-((gravy_const * mass_planet) / R ** 2) * m.cos(tetta)) / V + (V / R))
+    dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / V + (V / R))
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
     return dtetta, 'tetta'
 

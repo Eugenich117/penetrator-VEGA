@@ -209,7 +209,7 @@ def dV_func(initial):
     Cn = initial['Cn']
     Fn = initial['Fn']
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * ((gravy_const*mass_planet) / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
+    dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -224,7 +224,8 @@ def dtetta_func(initial):
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    g=((gravy_const * mass_planet) / R ** 2)
+    g = initial['g']
+    g = (g * Rb ** 2 / R ** 2)
     dtetta =-((m.cos(tetta)) * ((g / V) - (V / R)))
     #dtetta = ((-g * ((scipy.special.cosdg(tetta))/V)+(V/R))) * dt #был +
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
@@ -308,7 +309,7 @@ for i in range(8):
         Cxa = Cx(V, V_sound)
         Px = mass / Cxa * S
         #V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
-        initial.update({'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -334,7 +335,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = Cx(V, V_sound)
         Px = mass / Cxa * S
-        initial.update({'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -361,7 +362,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 1.28
         Px = mass / Cxa * S
-        initial.update({'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -388,7 +389,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 0.58
         Px = mass / Cxa * S
-        initial.update({'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -415,7 +416,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 0.58
         Px = mass / Cxa * S
-        initial.update({'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -437,6 +438,7 @@ for i in range(8):
     for j in range(1, len(V_MOD[i])):
         derivative_value = (V_MOD[i][j] - V_MOD[i][j - 1]) / dt
         acceleration[i].append(derivative_value)
+
 
 
 for i in range(8):
