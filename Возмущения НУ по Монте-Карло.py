@@ -1,6 +1,5 @@
 import numpy as np
 import time
-from scipy.special import sindg, cosdg
 import math as m
 import matplotlib.pyplot as plt
 from icecream import ic
@@ -10,16 +9,14 @@ import threading
 import multiprocessing
 from multiprocessing import Queue, Pipe
 import random
+import bisect
 # мат модель из книжки воронцова упрощенная
 
-
-
-# Cxa = 1.3#((2*L*r2*(1+r1/r2)/S))*(m.tan(Qk)/2)*(2*m.cos(0)**2*m.sin(Qk)**2+m.sin(0))
+#Cxa = ((2*L*r2*(1+r1/r2)/S))*(m.tan(Qk)/2)*(2*m.cos(0)**2*m.sin(Qk)**2+m.sin(0))
 # Cya = 0#((2*L*r2*(1+r1/r2))/S)*m.pi*m.cos(0)*m.sin(0)*m.cos(Qk)*m.cos(Qk)
 # Px = mass / Cxa * S
 # K = Cya / Cxa
 # ic(Cxa, Cya)
-
 
 
 def find_closest_points_ro(x, xi):
@@ -141,6 +138,18 @@ def Get_ro(R): # В основной функции всё в метрах, в �
 
 
 def Cx(xi, V_sound):
+    x = [0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
+         12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+         39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
+    y = [0.75, 0.8, 0.9, 1.1, 1.3, 1.45, 1.52, 1.55, 1.6, 1.7, 1.8, 1.78, 1.75, 1.7, 1.65, 1.6, 1.55, 1.52, 1.52, 1.52,
+         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
+         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
+         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
+         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52]
+    return newton_interpolation(x, y, xi/V_sound)
+
+
+def Cx_wind(xi, V_sound):
     x = [0, 0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
          12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
@@ -167,7 +176,7 @@ def v_sound(R):
 
 start_time = time.time()
 r1 = 0.4
-mass = 180
+mass = 120
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
 Rb = 6_051_800
@@ -185,6 +194,93 @@ cToRad = m.pi / 180
 R = Rb + h
 dV = 0
 d_list = [4, 2, 1, 0.8, 0.4]
+'''
+def dV_func(initial):
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    tetta = initial['tetta']
+    omega_b = initial['omega_b']
+    phi = initial['phi']
+    epsilon = initial['epsilon']
+    R = initial['R']
+    g = initial['g']
+
+    dV = (-1 / (2 * Px) * ro * V**2 - g * m.sin(tetta) + omega_b**2 * R * (
+          m.cos(phi)**2 * m.sin(tetta) - m.cos(phi) * m.sin(phi) * m.sin(epsilon) * m.cos(tetta)))
+    return dV, 'V'
+
+
+def dtetta_func(initial):
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    K = initial['K']
+    tetta = initial['tetta']
+    omega_b = initial['omega_b']
+    phi = initial['phi']
+    epsilon = initial['epsilon']
+    R = initial['R']
+    g = initial['g']
+
+    dtetta = (1 / (2 * Px) * ro * V**2 * K + (V**2 - g * R) / (V * R)) * m.cos(tetta) + \
+             2 * omega_b * m.cos(phi) * m.cos(epsilon) + omega_b**2 * R * m.cos(phi) * m.cos(epsilon)
+    return dtetta, 'tetta'
+
+
+def depsilon_func(initial):
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    K = initial['K']
+    tetta = initial['tetta']
+    omega_b = initial['omega_b']
+    phi = initial['phi']
+    epsilon = initial['epsilon']
+    R = initial['R']
+    g = initial['g']
+
+    depsilon = (1 / (2 * Px) * ro * V**2 * K * m.sin(epsilon) / m.cos(tetta) +
+                V / R * (m.tan(phi) * m.cos(epsilon) - m.sin(tetta) * m.sin(epsilon)) +
+                omega_b**2 * R * m.sin(phi) * m.cos(phi) * m.cos(epsilon) / m.cos(tetta) +
+                2 * omega_b * (m.cos(phi) * m.sin(epsilon) - m.tan(phi) * m.sin(phi)))
+    return depsilon, 'epsilon'
+
+
+def dphi_func(initial):
+    V = initial['V']
+    tetta = initial['tetta']
+    epsilon = initial['epsilon']
+    R = initial['R']
+
+    dphi = (V * m.cos(tetta) * m.sin(epsilon)) / R
+    return dphi, 'phi'
+
+
+def dlam_func(initial):
+    V = initial['V']
+    tetta = initial['tetta']
+    epsilon = initial['epsilon']
+    R = initial['R']
+    phi = initial['phi']
+
+    dlam = (V * m.cos(tetta) * m.cos(epsilon)) / (R * m.cos(phi))
+    return dlam, 'lam'
+
+def dR_func(initial):
+    V = initial['V']
+    tetta = initial['tetta']
+
+    dR = V * m.sin(tetta)
+    return dR, 'R'
+'''
+def sign(x):
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    else:
+        return 0
 
 def dV_func(initial):
     S = initial['S']
@@ -192,31 +288,69 @@ def dV_func(initial):
     Cxa = initial['Cxa']
     ro = initial['ro']
     V = initial['V']
+
     tetta = initial['tetta']
     mass = initial['mass']
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
+    Cxa_wind = initial['Cxa_wind']
+    V_wind_x = V_wind * m.sin(wind_angle)  # Вдоль траектории
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
+    dV = (-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass
+
     return dV, 'V'
 
 def dL_func(initial):
     V = initial['V']
     tetta = initial['tetta']
-    dL = V * Rb/R * m.cos(tetta)
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
+
+    V_wind_z = V_wind * m.cos(wind_angle)  # Перпендикулярно траектории
+    dL = m.sqrt(V ** 2 + V_wind_z ** 2) * Rb/R * m.cos(tetta)
     return dL, 'L'
 
 def dtetta_func(initial):
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / V + (V / R))
+    V_wind = initial['V_wind']
+
+    dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / m.sqrt(V ** 2 + V_wind ** 2) + (m.sqrt(V ** 2 + V_wind ** 2) / R))
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
     return dtetta, 'tetta'
 
 def dR_func(initial):
     V = initial['V']
     tetta = initial['tetta']
-    dR = (V * m.sin(tetta))
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
+
+    V_wind = V_wind * m.cos(wind_angle)  # Вдоль траектории
+    dR = (m.sqrt(V ** 2 + V_wind ** 2) * m.sin(tetta))
     return dR, 'R'
+
+
+def wind(h):
+    bounds = [0, 6, 28, 36, 48, 61, 76, 94, 100, float('inf')]
+    # Функции для вычисления v_wind в зависимости от диапазона
+    actions = [
+        lambda: random.uniform(0, 7),  # 0 < h < 6
+        lambda: random.uniform(0, 25),  # 6 < h < 26
+        lambda: random.uniform(15, 35),  # 27 < h < 36
+        lambda: random.uniform(30, 60),  # 37 < h < 48
+        lambda: random.uniform(50, 80),  # 48 < h < 61
+        lambda: random.uniform(50, 100),  # 61 < h < 76
+        lambda: random.uniform(50, 70),  # 76 < h < 94
+        lambda: random.uniform(0, 12),  # 94 < h < 100
+        lambda: 0  # h > 100
+    ]
+    # Находим индекс диапазона с помощью bisect
+    index = bisect.bisect_right(bounds, h) - 1
+
+    # Выполняем соответствующую функцию
+    return actions[index]()
+
 
 def runge_kutta_4(equations, initial, dt, dx):
     '''equations - это список названий функций с уравнениями для системы
@@ -264,7 +398,7 @@ def runge_kutta_4(equations, initial, dt, dx):
 
 #(i, napor, TETTA, X, Y, V_MOD, T, PX, nx, acceleration) # передача листов для результатов в явном виде в функцию
 def compute_trajectory(i, equations, dx, pipe_conn):
-    #print(f"поток {i} запущен")
+
     t = 0
     d = 0.8
     S = (m.pi * d ** 2) / 4
@@ -276,21 +410,34 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
     local_PX = []; local_acceleration = []
-
+    lam, phi, epsilon = 0, 0, 0
     while R >= Rb:
+        V_wind = wind(R - Rb)
+        wind_angle = random.uniform(0, m.pi)
+        omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
         Cxa = Cx(V, V_sound)
+        Cxa_wind = Cx(V, V_sound)
         Px = mass / Cxa * S
-        # V, tetta, R, L = runge_kutta_6(S, L, Cxa, ro, V, tetta, R, dt)
-        initial.update({'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
+        '''Cya = 0.5
+        K = Cya / Cxa'''
+
+        initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind, 'omega_b': omega_b,
+                        'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
         values = runge_kutta_4(equations, initial, dt, dx)
+        '''V = values[0]
+        tetta = values[1]
+        epsilon = values[2]
+        phi = values[3]
+        lam = values[4]
+        R = values[5]'''
+
         V = values[0]
         L = values[1]
         tetta = values[2]
         R = values[3]
         t += dt
-
         local_TETTA.append(tetta * cToDeg)
         local_X.append(L)
         local_Y.append(R - Rb)
@@ -314,9 +461,11 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 50 #количество итераций
+    iter = 100 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
+    #dx = ['V', 'tetta', 'epsilon', 'phi', 'lam', 'R']
+    #equations = [dV_func, dtetta_func, depsilon_func, dphi_func, dlam_func, dR_func]
     #with multiprocessing.Manager() as manager:
 
         # Создаем списки через менеджера
@@ -405,7 +554,7 @@ if __name__ == '__main__':
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -415,7 +564,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -425,7 +574,7 @@ if __name__ == '__main__':
     plt.xlabel("Время, c", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -435,7 +584,7 @@ if __name__ == '__main__':
     plt.xlabel("Высота, м", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -445,7 +594,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -455,7 +604,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скоростной напор, $\frac{\mathrm{кг}}{\mathrm{м} \cdot \mathrm{с}^{2}}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.25, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -467,7 +616,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Ускорение м$^2$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -478,7 +627,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Перегрузка, g', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -489,7 +638,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Px, $\frac{кг}{м^2}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 

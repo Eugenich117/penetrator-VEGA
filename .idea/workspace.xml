@@ -4,18 +4,25 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
+    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="исправление мелких ошибок">
+      <change afterPath="$PROJECT_DIR$/diplom_Yulia.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ВЕГА разные компановки.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА разные компановки.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Для ВЕГи.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/пенетратор обновленный.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/пенетратор.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/разные диаметры НТУ.py" beforeDir="false" afterPath="$PROJECT_DIR$/разные диаметры НТУ.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/тесты функций.py" beforeDir="false" afterPath="$PROJECT_DIR$/тесты функций.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -29,35 +36,61 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.Shaposhnikov.executor": "Run",
-    "Python.ВЕГА разные компановки.executor": "Run",
-    "Python.Возмущения НУ по Монте-Карло.executor": "Run",
-    "Python.Для ВЕГи.executor": "Run",
-    "Python.графики скорости.executor": "Run",
-    "Python.пенетратор обновленный.executor": "Run",
-    "Python.разные диаметры НТУ.executor": "Run",
-    "Python.тесты функций.executor": "Run",
-    "Python.яметод Лагранжа.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/zheny/OneDrive/Рабочий стол/xxxxxx/универ/IT/питон самоучение/матеша",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.Shaposhnikov.executor&quot;: &quot;Run&quot;,
+    &quot;Python.diplom_Yulia.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ВЕГА разные компановки.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Возмущения НУ по Монте-Карло.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Для ВЕГи.executor&quot;: &quot;Run&quot;,
+    &quot;Python.графики скорости.executor&quot;: &quot;Run&quot;,
+    &quot;Python.интерполяция 6 степени.executor&quot;: &quot;Run&quot;,
+    &quot;Python.пенетратор обновленный.executor&quot;: &quot;Run&quot;,
+    &quot;Python.пенетратор.executor&quot;: &quot;Run&quot;,
+    &quot;Python.разные диаметры НТУ.executor&quot;: &quot;Run&quot;,
+    &quot;Python.тесты функций.executor&quot;: &quot;Run&quot;,
+    &quot;Python.яметод Лагранжа.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/zheny/OneDrive/Рабочий стол/xxxxxx/универ/IT/питон самоучение/матеша&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
-      "Python"
+  &quot;keyToStringList&quot;: {
+    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;Python&quot;
     ]
   }
-}]]></component>
-  <component name="RunManager">
+}</component>
+  <component name="RunManager" selected="Python.яметод Лагранжа">
+    <configuration name="Возмущения НУ по Монте-Карло" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pythonProject" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="яметод Лагранжа" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="pythonProject" />
       <option name="ENV_FILES" value="" />
@@ -82,6 +115,11 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.Возмущения НУ по Монте-Карло" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -117,7 +155,27 @@
       <workItem from="1731673884575" duration="2474000" />
       <workItem from="1731698821747" duration="659000" />
       <workItem from="1731744677392" duration="49000" />
-      <workItem from="1732175745397" duration="650000" />
+      <workItem from="1732175745397" duration="690000" />
+      <workItem from="1733061867326" duration="15000" />
+      <workItem from="1734098667801" duration="1576000" />
+      <workItem from="1734190331642" duration="607000" />
+      <workItem from="1734294815615" duration="641000" />
+      <workItem from="1735823209909" duration="2213000" />
+      <workItem from="1735896983870" duration="598000" />
+      <workItem from="1735898894551" duration="1689000" />
+      <workItem from="1735978654553" duration="11180000" />
+      <workItem from="1736191182673" duration="9020000" />
+      <workItem from="1736623769222" duration="22235000" />
+      <workItem from="1737016693721" duration="79145000" />
+      <workItem from="1737616061032" duration="7950000" />
+      <workItem from="1738252058095" duration="5114000" />
+      <workItem from="1738313497959" duration="2654000" />
+      <workItem from="1738423841196" duration="2062000" />
+      <workItem from="1738558461323" duration="9934000" />
+      <workItem from="1739544210718" duration="17787000" />
+      <workItem from="1739906117080" duration="599000" />
+      <workItem from="1739939825828" duration="12000" />
+      <workItem from="1739939909995" duration="1005000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -151,7 +209,15 @@
       <option name="project" value="LOCAL" />
       <updated>1727625739455</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="исправление мелких ошибок">
+      <option name="closed" value="true" />
+      <created>1732176427242</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1732176427242</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -159,7 +225,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="подготовленный проект с верными уравнениями и системой интегрирования" />
-    <option name="LAST_COMMIT_MESSAGE" value="подготовленный проект с верными уравнениями и системой интегрирования" />
+    <MESSAGE value="исправление мелких ошибок" />
+    <option name="LAST_COMMIT_MESSAGE" value="исправление мелких ошибок" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -174,13 +241,31 @@
           <line>211</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/diplom_Yulia.py</url>
+          <line>81</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/diplom_Yulia.py</url>
+          <line>225</line>
+          <option name="timeStamp" value="7" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/пенетратор.py</url>
+          <line>288</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1727866572759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../заказы УИРС" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="ВЕГА разные компановки Coverage Results" MODIFIED="1732176337191" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1732175842086" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="тесты функций Coverage Results" MODIFIED="1727813020881" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="разные диаметры НТУ Coverage Results" MODIFIED="1739717188762" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$diplom_Yulia.coverage" NAME="diplom_Yulia Coverage Results" MODIFIED="1739718937266" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1739868788739" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="тесты функций Coverage Results" MODIFIED="1737246979254" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="пенетратор Coverage Results" MODIFIED="1739717004136" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$_6_.coverage" NAME="интерполяция 6 степени Coverage Results" MODIFIED="1739716148237" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../матеша" />
   </component>
 </project>
