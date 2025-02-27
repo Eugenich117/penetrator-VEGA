@@ -5,12 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="исправление мелких ошибок">
-      <change afterPath="$PROJECT_DIR$/diplom_Yulia.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Yulia_diplom_variations.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/diplom_Yulia.py" beforeDir="false" afterPath="$PROJECT_DIR$/diplom_Yulia.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/пенетратор.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/разные диаметры НТУ.py" beforeDir="false" afterPath="$PROJECT_DIR$/разные диаметры НТУ.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/тесты функций.py" beforeDir="false" afterPath="$PROJECT_DIR$/тесты функций.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/графики скорости.py" beforeDir="false" afterPath="$PROJECT_DIR$/графики скорости.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +38,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;Python.Shaposhnikov.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Yulia_diplom_variations.executor&quot;: &quot;Run&quot;,
     &quot;Python.diplom_Yulia.executor&quot;: &quot;Run&quot;,
     &quot;Python.ВЕГА разные компановки.executor&quot;: &quot;Run&quot;,
     &quot;Python.Возмущения НУ по Монте-Карло.executor&quot;: &quot;Run&quot;,
@@ -49,6 +49,7 @@
     &quot;Python.пенетратор.executor&quot;: &quot;Run&quot;,
     &quot;Python.разные диаметры НТУ.executor&quot;: &quot;Run&quot;,
     &quot;Python.тесты функций.executor&quot;: &quot;Run&quot;,
+    &quot;Python.эксперименты.executor&quot;: &quot;Run&quot;,
     &quot;Python.яметод Лагранжа.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
@@ -67,7 +68,7 @@
     ]
   }
 }</component>
-  <component name="RunManager" selected="Python.яметод Лагранжа">
+  <component name="RunManager">
     <configuration name="Возмущения НУ по Монте-Карло" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="pythonProject" />
       <option name="ENV_FILES" value="" />
@@ -176,6 +177,11 @@
       <workItem from="1739906117080" duration="599000" />
       <workItem from="1739939825828" duration="12000" />
       <workItem from="1739939909995" duration="1005000" />
+      <workItem from="1740505230085" duration="4198000" />
+      <workItem from="1740509475284" duration="8421000" />
+      <workItem from="1740549460989" duration="2523000" />
+      <workItem from="1740576907437" duration="14759000" />
+      <workItem from="1740606927208" duration="2644000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -223,6 +229,17 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="подготовленный проект с верными уравнениями и системой интегрирования" />
     <MESSAGE value="исправление мелких ошибок" />
@@ -262,10 +279,11 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1727866572759" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../заказы УИРС" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="разные диаметры НТУ Coverage Results" MODIFIED="1739717188762" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$diplom_Yulia.coverage" NAME="diplom_Yulia Coverage Results" MODIFIED="1739718937266" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1739868788739" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="тесты функций Coverage Results" MODIFIED="1737246979254" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="пенетратор Coverage Results" MODIFIED="1739717004136" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$diplom_Yulia.coverage" NAME="diplom_Yulia Coverage Results" MODIFIED="1740508088246" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1740651589094" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="яметод Лагранжа Coverage Results" MODIFIED="1740510330575" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../матеша" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="эксперименты Coverage Results" MODIFIED="1740650652362" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$_6_.coverage" NAME="интерполяция 6 степени Coverage Results" MODIFIED="1739716148237" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../матеша" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$Yulia_diplom_variations.coverage" NAME="Yulia_diplom_variations Coverage Results" MODIFIED="1740597918742" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

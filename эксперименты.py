@@ -178,9 +178,18 @@ def v_sound(R):
     return newton_interpolation_ro(x, y, R / 1000)
 
 
+def sign(x):
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    else:
+        return 0
+
+
 start_time = time.time()
 r1 = 0.4
-mass = 120
+mass = 180
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
 Rb = 6_051_800
@@ -199,67 +208,59 @@ R = Rb + h
 dV = 0
 
 
-def sign(x):
-    if x > 0:
-        return 1
-    elif x < 0:
-        return -1
-    else:
-        return 0
-
 def dV_func(initial):
-    S=initial['S']
-    R=initial['R']
-    Cxa=initial['Cxa']
-    ro=initial['ro']
-    V=initial['V']
-    tetta=initial['tetta']
-    mass=initial['mass']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
-    Cxa_wind=initial['Cxa_wind']
-    V_wind_x=V_wind*m.sin(wind_angle)#Вдольтраектории
+    S = initial['S']
+    R = initial['R']
+    Cxa = initial['Cxa']
+    ro = initial['ro']
+    V = initial['V']
+    tetta = initial['tetta']
+    mass = initial['mass']
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
+    Cxa_wind = initial['Cxa_wind']
+    V_wind_x = V_wind*m.sin(wind_angle)#Вдольтраектории
     #dV=((-1/(2*Px))*Cxa*ro*V**2-((gravy_const*mass_planet)/R**2)*scipy.special.sindg(tetta))*dt#ОСНОВНАЯМОДЕЛЬКОСЕНКОВОЙ
-    dV=(-mass*(g*Rb**2/R**2)*m.sin(tetta)-(0.5*ro*V**2*Cxa*S)+sign(V_wind_x)*(0.5*ro*V_wind_x**2*Cxa_wind*S))/mass
+    dV=(-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass
     return dV, 'V'
 
 def dL_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
+    V = initial['V']
+    tetta = initial['tetta']
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
 
-    V_wind_z=V_wind*m.cos(wind_angle)#Перпендикулярнотраектории
-    dL=m.sqrt(V**2+V_wind_z**2)*Rb/R*m.cos(tetta)
+    V_wind_z = V_wind * m.cos(wind_angle)#Перпендикулярнотраектории
+    dL = m.sqrt(V**2 + V_wind_z**2) * Rb / R * m.cos(tetta)
     return dL, 'L'
 
 def dtetta_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    R=initial['R']
-    V_wind=initial['V_wind']
+    V = initial['V']
+    tetta = initial['tetta']
+    R = initial['R']
+    V_wind = initial['V_wind']
 
-    dtetta=((-(g*Rb**2/R**2)*m.cos(tetta))/m.sqrt(V**2+V_wind**2)+(m.sqrt(V**2+V_wind**2)/R))
+    dtetta = ((-(g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R))
     #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
     return dtetta, 'tetta'
 
 def dR_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
+    V = initial['V']
+    tetta = initial['tetta']
+    V_wind = initial['V_wind']
+    wind_angle = initial['wind_angle']
 
-    V_wind=V_wind*m.cos(wind_angle)#Вдольтраектории
-    dR=(m.sqrt(V**2+V_wind**2)*m.sin(tetta))
+    V_wind =  V_wind*m.cos(wind_angle)#Вдольтраектории
+    dR = (m.sqrt(V**2 + V_wind**2) * m.sin(tetta))
     return dR, 'R'
 
 
 def wind(h):
     bounds = [0, 6, 28, 36, 48, 61, 76, 94, 100, float('inf')]
-    #Функциидлявычисленияv_windвзависимостиотдиапазона
+    #Функции для вычисления v_wind в зависимости от высоты
     actions=[
     lambda:random.uniform(0, 7),#0<h<6
-    lambda:random.uniform(0, 25),#6<h<26
+    lambda:random.uniform(0, 10),#6<h<26
     lambda:random.uniform(15, 35),#27<h<36
     lambda:random.uniform(30, 60),#37<h<48
     lambda:random.uniform(50, 80),#48<h<61
@@ -269,10 +270,11 @@ def wind(h):
     lambda:0#h>100
     ]
     #Находим индекс диапазона с помощью bisect
-    index=bisect.bisect_right(bounds, h)-1
+    index = bisect.bisect_right(bounds, h)-1
 
     #Выполняем соответствующую функцию
     return actions[index]()
+
 
 def runge_kutta_4(equations, initial, dt, dx):
     '''equations - это список названий функций с уравнениями для системы
@@ -342,9 +344,6 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         Cxa = Cx(V, V_sound)
         Cxa_wind = Cx_wind(V, V_sound)
         Px = mass / Cxa * S
-        '''Cya=0.5
-        K=Cya/Cxa'''
-
         initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind, 'omega_b': omega_b,
                         'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L,
                         'V': V, 'R': R})
@@ -354,6 +353,20 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         tetta = values[2]
         R = values[3]
         t += dt
+
+        '''V_sound = v_sound(R - Rb)
+        ro = Get_ro(R - Rb)
+        Cxa = Cx(V, V_sound)
+        Px = mass / Cxa * S
+        # V, tetta, R, L = runge_kutta_6(S, L, Cxa, ro, V, tetta, R, dt)
+        initial.update({'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
+        values = runge_kutta_4(equations, initial, dt, dx)
+        V = values[0]
+        L = values[1]
+        tetta = values[2]
+        R = values[3]
+        t += dt'''
+
         local_TETTA.append(tetta * cToDeg)
         local_X.append(L)
         local_Y.append(R - Rb)
@@ -362,7 +375,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
-    #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
+        #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
 
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
@@ -377,7 +390,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 100 #количество итераций
+    iter = 50 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:

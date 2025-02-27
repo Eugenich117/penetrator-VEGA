@@ -11,8 +11,6 @@ import scipy
 r1 = 0.4
 d = 0.92
 #L = 0.53
-
-
 mass = 600
 h = 450_000
 mass_planet = 1.8996*10**27
@@ -322,8 +320,8 @@ while R >= Rb:
     napor.append(0.5*ro*V**2)
     nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2)))
     PX.append(Px)
-    #print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t}, nx ={(0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2))}')
-ic(V, tetta, R, L, t)
+    print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t}, nx ={(0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2))}')
+
 print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
 for i in range(1, len(V_MOD)):
