@@ -508,7 +508,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 20 #количество итераций
+    iter = 100 #количество итераций
     dx = ['V', 'L', 'tetta', 'R', 'mass']
     equations = [dV_func, dL_func, dtetta_func, dR_func, dm_func]
     #with multiprocessing.Manager() as manager:
@@ -686,6 +686,25 @@ if __name__ == '__main__':
     #plt.legend()
     plt.grid(True)
     plt.show()
+
+    data = {
+        "acceleration": acceleration,
+        "napor": napor,
+        "TETTA": TETTA,
+        "X": X,
+        "Y": Y,
+        "T": T,
+        "PX": PX,
+        "nx": nx,
+        "V_MOD": V_MOD,
+    }
+
+    # Перебираем каждый массив и находим min и max
+    for key, values in data.items():
+        all_values = np.concatenate(values)  # Объединяем все списки в один массив
+        min_val = np.min(all_values)
+        max_val = np.max(all_values)
+        print(f"{key}: min = {min_val}, max = {max_val}")
 
     end_time = time.time()
     elapsed_time = end_time - start_time

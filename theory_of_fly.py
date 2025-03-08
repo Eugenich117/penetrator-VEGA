@@ -23,7 +23,7 @@ g = 9.80665
 
 S = (m.pi * d ** 2)/4
 L = 0
-tetta = -0.034  # * (m.pi / 180)
+tetta = -0.017  # * (m.pi / 180)
 V = 7600  # Используем тип данняых float64
 dt = 0.01
 t = 0.0
@@ -187,11 +187,10 @@ x = 0
 y = 0
 PX = []
 nx = []
-plotnost = []
+ny = []
 acceleration = []
 napor = []
 TETTA = []
-CX = []
 X = []
 Y = []
 V_MOD = []
@@ -228,7 +227,9 @@ def dtetta_func(initial):
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / V + (V / R))
+    mass = initial['mass']
+    dtetta = ((0.5 * ro * V ** 2 * Cya * S) / (mass *V)) - ((g * Rb ** 2 / R ** 2) / V) * m.cos(tetta) + ((V * m.cos(tetta) / R))
+    #dtetta = ((-(g * Rb ** 2 / R ** 2) * m.cos(tetta)) / V + (V / R))
     #dtetta = ( ((V ** 2 - ((gravy_const*mass_planet)/R**2) * R) / (V * R)) * scipy.special.cosdg(tetta)) * dt
     return dtetta, 'tetta'
 
@@ -305,7 +306,14 @@ while R >= Rb:
     V_sound = v_sound(R - Rb)
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
-    initial.update({'qk': qk, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
+    xd = 0.06
+    Cya = 0.025
+    K = 0.15
+    gamma = 0.009
+    alfa = (gamma/xd) * (Cxa/(Cya + Cxa))
+    Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
+    Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
+    initial.update({'qk': qk, 'tetta': tetta, 'Cya': Cya, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
@@ -319,15 +327,14 @@ while R >= Rb:
     Quantitiy_warm.append(quantity_warm)
     Tomega.append((qk/(0.8 * 5.67*10**(-11)))**0.25)
     Qk.append(qk)
-    CX.append(Cxa)
     TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
     T.append(t)
-    plotnost.append(ro)
     napor.append(0.5*ro*V**2)
-    nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2)))
+    ny.append((0.5 * S * Cya * ro * V ** 2)/(mass * (g * Rb ** 2 / R ** 2)))
+    nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass * (g * Rb ** 2 / R ** 2)))
     PX.append(Px)
     #print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t}, nx ={(0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2))}')
 
@@ -389,7 +396,14 @@ plt.grid(True)
 plt.show()'''
 
 plt.plot(T, nx)
-plt.title('Зависимость перегрузки от времени')
+plt.title('Зависимость продольной перегрузки от времени')
+plt.xlabel('Время, с')
+plt.ylabel('Перегрузка, g')
+plt.grid(True)
+plt.show()
+
+plt.plot(T, ny)
+plt.title('Зависимость поперечной перегрузки от времени')
 plt.xlabel('Время, с')
 plt.ylabel('Перегрузка, g')
 plt.grid(True)
@@ -422,6 +436,32 @@ plt.xlabel('Время, с')
 plt.ylabel('T, K')
 plt.grid(True)
 plt.show()
+#ic(len(acceleration), len(napor), len(X), len(Y), len(T), len(Qk), len(nx), len(ny), len(V_MOD), len(Quantitiy_warm), len(Tomega))
+data = {
+    "acceleration": acceleration,
+    "napor": napor,
+    "TETTA": TETTA,
+    "X": X,
+    "Y": Y,
+    "T": T,
+    "nx": nx,
+    "ny": ny,
+    "V_MOD": V_MOD,
+    "Qk": Qk,
+    "Quantitiy_warm": Quantitiy_warm,
+    "Tomega": Tomega,
+}
+
+# Перебираем каждый массив и находим min и max
+for key, values in data.items():
+    if isinstance(values[0], (list, np.ndarray)):  # Проверка на вложенность
+        all_values = np.concatenate(values)  # Если многомерный, объединяем
+    else:
+        all_values = np.array(values)  # Если одномерный, преобразуем в массив
+
+    min_val = np.min(all_values)
+    max_val = np.max(all_values)
+    print(f"{key}: min = {min_val}, max = {max_val}")
 
 end_time = time.time()
 elapsed_time = end_time - start_time

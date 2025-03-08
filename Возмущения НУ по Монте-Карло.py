@@ -540,7 +540,7 @@ if __name__ == '__main__':
 
     for i in range(iter):
         plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость траекторного от времени', fontsize=16, fontname='Times New Roman')
+    plt.title('Зависимость траекторного угла от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
@@ -591,6 +591,38 @@ if __name__ == '__main__':
     #plt.legend()
     plt.grid(True)
     plt.show()
+
+
+    for i in range(iter):
+        T[i] = T[i][:3000]
+        nx[i] = nx[i][:3000]
+        plt.plot(T[i], nx[i], label=f'Вариант {i + 1}')
+    plt.title('Зависимость перегрузки от времени', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
+    plt.ylabel('Перегрузка, g', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    #plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    data = {
+        "acceleration": acceleration,
+        "napor": napor,
+        "TETTA": TETTA,
+        "X": X,
+        "Y": Y,
+        "T": T,
+        "PX": PX,
+        "nx": nx,
+        "V_MOD": V_MOD,
+    }
+
+    # Перебираем каждый массив и находим min и max
+    for key, values in data.items():
+        all_values = np.concatenate(values)  # Объединяем все списки в один массив
+        min_val = np.min(all_values)
+        max_val = np.max(all_values)
+        print(f"{key}: min = {min_val}, max = {max_val}")
 
     end_time = time.time()
     elapsed_time = end_time - start_time
