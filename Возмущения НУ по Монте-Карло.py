@@ -11,6 +11,8 @@ import multiprocessing
 from multiprocessing import Queue, Pipe
 import random
 import bisect
+import sqlite3
+import pandas as pd
 # мат модель из книжки воронцова упрощенная
 
 
@@ -318,6 +320,37 @@ def runge_kutta_4(equations, initial, dt, dx):
     return new_values
 
 
+def save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+               local_acceleration):
+    conn = sqlite3.connect("trajectories.db")
+    cursor = conn.cursor()
+
+    # Создаем таблицу, если она не существует
+    cursor.execute('''CREATE TABLE IF NOT EXISTS trajectory_data (
+                        iter INTEGER, time REAL, tetta REAL, x REAL, y REAL, v_mod REAL, 
+                        napor REAL, nx REAL, px REAL, acceleration REAL)''')
+
+    # Подготавливаем данные для вставки
+    data = list(zip(
+        [i] * len(local_T),
+        local_T,
+        local_TETTA,
+        local_X,
+        local_Y,
+        local_V_MOD,
+        local_napor,
+        local_nx,
+        local_PX,
+        local_acceleration
+    ))
+
+    # Вставляем данные
+    cursor.executemany("INSERT INTO trajectory_data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    #print('sucsess')
+    conn.commit()
+    conn.close()
+
+
 #(i, napor, TETTA, X, Y, V_MOD, T, PX, nx, acceleration) # передача листов для результатов в явном виде в функцию
 def compute_trajectory(i, equations, dx, pipe_conn):
     #print(f"поток {i} запущен")
@@ -362,6 +395,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
+        #save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
+        #print("sucsess")
+
     #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
 
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
@@ -504,7 +540,7 @@ if __name__ == '__main__':
 
     for i in range(iter):
         plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость угла входа от времени', fontsize=16, fontname='Times New Roman')
+    plt.title('Зависимость траекторного от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)

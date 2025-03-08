@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from icecream import ic
 ic.enable()
 
-d = 0.8
+d = 4 #0.8
 mass = 180
 
 g = 8.87
@@ -15,7 +15,7 @@ Cx = 1.5
 M = []
 square = []
 speed = []
-
+'''
 while mass > 0:
     V = m.sqrt((2 * mass * g) / (Cx * 64.79 * S))
     speed.append(V)
@@ -39,9 +39,9 @@ while S >= 0.12:
     S -= 0.01
 
 plt.plot(square, speed)
-plt.title('Зависимость скорости от площади миделево сечения', fontsize=16, fontname='Times New Roman')
-plt.xlabel('Миделево сечение, м$^2$', fontsize=16, fontname='Times New Roman')
+plt.title('Зависимость скорости от площади миделя ', fontsize=16, fontname='Times New Roman')
+plt.xlabel('Мидель, м$^2$', fontsize=16, fontname='Times New Roman')
 plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
 plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 plt.grid(True)
-plt.show()'''
+plt.show()
