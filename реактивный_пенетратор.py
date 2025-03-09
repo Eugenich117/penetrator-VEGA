@@ -267,8 +267,8 @@ def dm_func(initial):
     return dm, 'mass'
 
 
-def wind(h):
-    bounds = [0, 6, 28, 36, 48, 61, 76, 94, 100, float('inf')]
+def wind(h, t, next_update_time, V_wind, wind_angle):
+    bounds = [0, 6_000, 28_000, 36_000, 48_000, 61_000, 76_000, 94_000, 100_000, float('inf')]
     #Функциидлявычисленияv_windвзависимостиотдиапазона
     actions=[
     lambda:random.uniform(0, 7),#0<h<6
@@ -282,10 +282,14 @@ def wind(h):
     lambda:0#h>100
     ]
     #Находим индекс диапазона с помощью bisect
-    index=bisect.bisect_right(bounds, h)-1
+    index = bisect.bisect_right(bounds, h)-1
 
-    #Выполняем соответствующую функцию
-    return actions[index]()
+    if t >= next_update_time:
+        V_wind = actions[index]()  # Генерируем новую скорость ветра
+        wind_angle = random.uniform(0, m.pi)  # Генерируем новый угол ветра
+        wind_timer = random.uniform(0.2, 10)  # Случайный таймер
+        next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+    return V_wind, wind_angle, next_update_time
 
 
 def P_duel_func(P):
@@ -395,10 +399,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
     local_PX = []; local_acceleration = []
     lam, phi, epsilon = 0, 0, 0
-
+    next_update_time = -1
+    V_wind = 0
+    wind_angle = 0
     while R >= Rb + 3000:
         P = 0
-        V_wind = wind(R - Rb)
+        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         wind_angle = random.uniform(0, m.pi)
         omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты,рад/с
         V_sound = v_sound(R - Rb)
@@ -432,7 +438,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
     while mass <= 150:
         P = 100
-        V_wind = wind(R - Rb)
+        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         wind_angle = random.uniform(0, m.pi)
         omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты,рад/с
         V_sound = v_sound(R - Rb)
@@ -465,7 +471,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
     while R >= Rb :
         P = 0
-        V_wind = wind(R - Rb)
+        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         wind_angle = random.uniform(0, m.pi)
         omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты,рад/с
         V_sound = v_sound(R - Rb)
@@ -508,7 +514,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 100 #количество итераций
+    iter = 10 #количество итераций
     dx = ['V', 'L', 'tetta', 'R', 'mass']
     equations = [dV_func, dL_func, dtetta_func, dR_func, dm_func]
     #with multiprocessing.Manager() as manager:

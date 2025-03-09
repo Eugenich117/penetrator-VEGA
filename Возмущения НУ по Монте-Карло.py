@@ -423,7 +423,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 10 #количество итераций
+    iter = 100 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -606,7 +606,6 @@ if __name__ == '__main__':
     plt.show()
 
     for i in range(iter):
-        ic(len(WIND_ANGLE[i]), len(V_WIND[i]), len(T[i]))
         V_WIND[i].pop()
         plt.plot(T[i], V_WIND[i], label=f'Вариант {i + 1}')
     plt.title('Скорость ветра от времени', fontsize=16, fontname='Times New Roman')
