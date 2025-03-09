@@ -425,7 +425,7 @@ def save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_nap
 
 
 #(i, napor, TETTA, X, Y, V_MOD, T, PX, nx, acceleration) # передача листов для результатов в явном виде в функцию
-def compute_trajectory(i, equations, dx, pipe_conn):
+def compute_trajectory(equations, dx, pipe_conn, chromosome):
     #print(f"поток {i} запущен")
     t = 0
     mass = 180
@@ -450,7 +450,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     mass_consumption = 0
     S_soplar = 0
     qk = 0
-    while R >= Rb + 50_000:
+    h_vcl = chromosome['h_vcl']
+    h_stop = chromosome['h_stop']
+    while R >= Rb + h_vcl:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
@@ -468,7 +470,6 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         tetta = values[2]
         R = values[3]
         qk = values[4]
-        mass -= mass_consumption
         P = v_gas * mass_consumption + S_soplar * (p_soplar - pressure) #(P / ((g * Rb**2/R**2) * I_ud))
         t += dt
 
@@ -489,12 +490,11 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_PX.append(Px)
 
     print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
-
-    v_gas = 2453
-    p_soplar = 101_000
-    mass_consumption = 0.8
-    S_soplar = 0.0266
-    while R >= Rb + 48_000:
+    mass_consumption = chromosome['mass_consumption']
+    v_gas = chromosome['v_gas']
+    p_soplar = pressure_func(h_vcl - ((h_vcl - h_stop)/2))
+    S_soplar = chromosome['S_soplar']
+    while R >= Rb + h_stop:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
@@ -584,318 +584,186 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     for j in range(1, len(local_V_MOD)):
         derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
         local_acceleration.append(derivative_value)
-    result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-              local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P)
+    result = (local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+              local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P,
+              local_V_MOD[-1])
     pipe_conn.send(result)  # Передаем данные
     pipe_conn.close()  # Закрываем трубу
     #queue.put(result, block=False)
 
+PARAM_BOUNDS = {
+    'h_vcl': (10_000, 1_000),
+    'h_stop': (5_000, 500),
+    'mass_consumption': (0.4, 1.5),
+    'v_gas': (2000, 3000),
+    'S_soplar': (0.02, 0.7)
+}
+
+# Границы параметров
+'''PARAM_BOUNDS = {
+    'h_vcl': (50_000, 60_000),
+    'h_stop': (45_000, 55000),
+    'mass_consumption': (0.4, 1.5),
+    'v_gas': (2000, 3000),
+    'S_soplar': (0.02, 0.7)
+}'''
 
 
-if __name__ == '__main__':
-    iter = 10 #количество итераций
-    dx = ['V', 'L', 'tetta', 'R', 'qk']
-    equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
-    #with multiprocessing.Manager() as manager:
-
-        # Создаем списки через менеджера
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list([[] for _ in range(5)])
-    napor = manager.list([manager.list() for _ in range(5)])
-    TETTA = manager.list([manager.list() for _ in range(5)])
-    X = manager.list([manager.list() for _ in range(5)])
-    Y = manager.list([manager.list() for _ in range(5)])
-    T = manager.list([manager.list() for _ in range(5)])
-    PX = manager.list([manager.list() for _ in range(5)])
-    nx = manager.list([manager.list() for _ in range(5)])
-    V_MOD = manager.list([manager.list() for _ in range(5)])'''
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list()
-    napor = manager.list()
-    TETTA = manager.list()
-    X = manager.list()
-    Y = manager.list()
-    T = manager.list()
-    PX = manager.list()
-    nx = manager.list()
-    V_MOD = manager.list()'''
-    acceleration = ([[] for _ in range(iter)])
-    napor = ([[] for _ in range(iter)])
-    TETTA = ([[] for _ in range(iter)])
-    X = ([[] for _ in range(iter)])
-    Y = ([[] for _ in range(iter)])
-    T = ([[] for _ in range(iter)])
-    PX = ([[] for _ in range(iter)])
-    nx = ([[] for _ in range(iter)])
-    V_MOD = ([[] for _ in range(iter)])
-    V_WIND = ([[] for _ in range(iter)])
-    WIND_ANGLE = ([[] for _ in range(iter)])
-    Quantitiy_warm = ([[] for _ in range(iter)])
-    Tomega = ([[] for _ in range(iter)])
-    Qk = ([[] for _ in range(iter)])
-    P_list = ([[] for _ in range(iter)])
-    processes = []
-    parent_conns = []
-    child_conns = []
-
-    tasks = []
-
-    for i in range(iter):
-        parent_conn, child_conn = multiprocessing.Pipe()  # Создаем пару для каждого процесса
-        parent_conns.append(parent_conn)
-        child_conns.append(child_conn)
-        tasks.append((i, equations, dx, child_conn))  # Формируем задачи для передачи в пул
-
-
-    # Функция обратного вызова, которая будет вызываться по завершении каждой задачи
-
-    # Создаем пул процессов
-    pool = multiprocessing.Pool(processes=30)
-
-    # Запускаем задачи асинхронно с отслеживанием завершения
-    for task in tasks:
-        pool.apply_async(compute_trajectory, task)
-
-    '''for i in range(iter):
-        parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
-        parent_conns.append(parent_conn)
-        child_conns.append(child_conn)
-        p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
-        p.start()
-        processes.append(p)'''
-
-    '''results = []
-    while not queue.empty():
-        results.append(queue.get())'''
-
-    # Обработка результатов
-    for i in range(iter):
-        result = parent_conns[i].recv()
-        (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-        local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P) = result
-        TETTA[i] = local_TETTA
-        X[i] = local_X
-        Y[i] = local_Y
-        V_MOD[i] = local_V_MOD
-        T[i] = local_T
-        napor[i] = local_napor
-        nx[i] = local_nx
-        PX[i] = local_PX
-        acceleration[i] = local_acceleration
-        WIND_ANGLE[i] = local_wind_angle
-        V_WIND[i] = local_v_wind
-        Quantitiy_warm[i] = local_Quantitiy_warm
-        Tomega[i] = local_Tomega
-        Qk[i] = local_Qk
-        P_list[i] = local_P
-
-    data = {
-        "acceleration": acceleration,
-        "napor": napor,
-        "TETTA": TETTA,
-        "X": X,
-        "Y": Y,
-        "T": T,
-        "PX": PX,
-        "nx": nx,
-        "V_MOD": [arr[-1:] for arr in V_MOD if arr],
+# Функция для создания случайной хромосомы
+def create_chromosome():
+    return {
+        'h_vcl': random.uniform(*PARAM_BOUNDS['h_vcl']),
+        'h_stop': random.uniform(*PARAM_BOUNDS['h_stop']),
+        'mass_consumption': random.uniform(*PARAM_BOUNDS['mass_consumption']),
+        'v_gas': random.uniform(*PARAM_BOUNDS['v_gas']),
+        'S_soplar': random.uniform(*PARAM_BOUNDS['S_soplar'])
     }
 
-    # Перебираем каждый массив и находим min и max
-    for key, values in data.items():
-        all_values = np.concatenate(values)  # Объединяем все списки в один массив
-        min_val = np.min(all_values)
-        max_val = np.max(all_values)
-        print(f"{key}: min = {min_val}, max = {max_val}")
 
-    for i in range(iter):
-        plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
-    plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
-    plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Функция для создания начальной популяции
+def create_population(size):
+    return [create_chromosome() for _ in range(size)]
 
-    for i in range(iter):
-        plt.plot(T[i], Y[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость высоты от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
 
-    for i in range(iter):
-        plt.plot(T[i], V_MOD[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость модуля скорости от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel("Время, c", fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Функция приспособленности (запуск модели и получение V)
+def fitness(chromosome, pipe_conn):
+    # Здесь вызывается ваша функция compute_trajectory с параметрами из хромосомы
+    # Например, можно передать параметры через initial или напрямую в compute_trajectory
+    dx = ['V', 'L', 'tetta', 'R', 'qk']
+    equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
+    result = compute_trajectory(equations, dx, pipe_conn, chromosome)
+    pipe_conn.send(result)
+    pipe_conn.close()
 
-    for i in range(iter):
-        plt.plot(Y[i], V_MOD[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость модуля скорости от высоты', fontsize=16, fontname='Times New Roman')
-    plt.xlabel("Высота, м", fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
 
-    for i in range(iter):
-        plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость траекторного угла от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
-    plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Селекция (турнирный отбор)
+def selection(population, fitness_scores):
+    selected = []
+    for _ in range(POPULATION_SIZE):
+        idx1, idx2 = random.sample(range(POPULATION_SIZE), 2)
+        if fitness_scores[idx1] > fitness_scores[idx2]:
+            selected.append(population[idx1])
+        else:
+            selected.append(population[idx2])
+    return selected
 
-    for i in range(iter):
-        plt.plot(T[i], napor[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость скоростного напора от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Скоростной напор, $\frac{\mathrm{кг}}{\mathrm{м} \cdot \mathrm{с}^{2}}$', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.25, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
 
-    #T.pop()# Убираем последний элемент из списка времени
-    for i in range(iter):
-        T[i].pop()
-        plt.plot(T[i], acceleration[i], label=f'Вариант {i+1}')
-    plt.title('Зависимость ускорения от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel('Ускорение м$^2$', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Скрещивание (одноточечное)
+def crossover(parent1, parent2):
+    child = {}
+    for param in PARAM_BOUNDS:
+        if random.random() < 0.5:
+            child[param] = parent1[param]
+        else:
+            child[param] = parent2[param]
+    return child
 
-    for i in range(iter):
-        nx[i].pop()
-        plt.plot(T[i], nx[i], label=f'Вариант {i + 1}')
-    plt.title('Зависимость перегрузки от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel('Перегрузка, g', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
 
-    for i in range(iter):
-        PX[i].pop()
-        plt.plot(T[i], PX[i], label=f'Вариант {i + 1}')
-    plt.title('Зависимость давления на мидель от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Px, $\frac{кг}{м^2}$', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Мутация
+def mutate(chromosome):
+    for param in chromosome:
+        if random.random() < MUTATION_RATE:
+            chromosome[param] = random.uniform(*PARAM_BOUNDS[param])
+    return chromosome
 
-    for i in range(iter):
-        V_WIND[i].pop()
-        plt.plot(T[i], V_WIND[i], label=f'Вариант {i + 1}')
-    plt.title('Скорость ветра от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'м/с', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
 
-    for i in range(iter):
-        WIND_ANGLE[i].pop()
-        plt.plot(T[i], WIND_ANGLE[i], label=f'Вариант {i + 1}')
-    plt.title('Угол действия ветра от времени', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Рад/с', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+# Основной цикл генетического алгоритма
+def create_population(size):
+    return [create_chromosome() for _ in range(size)]
 
-    for i in range(iter):
-        Qk[i].pop()
-        plt.plot(T[i], Qk[i])
-    #plt.figure(figsize=(12, 5))
-    plt.title('Зависимость плотности конвективного теплового потока от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('Q, КВт/м^2')
-    plt.grid(True)
-    plt.show()
+# Функция приспособленности (запуск модели и получение V)
+def fitness(chromosome, child_conn):
+    try:
+        dx = ['V', 'L', 'tetta', 'R', 'qk']
+        equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
+        result = compute_trajectory(equations, dx, child_conn, chromosome)
+        child_conn.send(result)  # Передаем данные
+    finally:
+        child_conn.close()  # Закрываем канал после отправки данных
 
-    for i in range(iter):
-        Quantitiy_warm[i].pop()
-        plt.plot(T[i], Quantitiy_warm[i])
-    plt.title('Зависимость полного количества тепла к единице поверхности КЛА от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('Q, KДж/м^2')
-    plt.grid(True)
-    plt.show()
+# Основной цикл генетического алгоритма
+def genetic_algorithm():
+    population = create_population(POPULATION_SIZE)
+    for generation in range(GENERATIONS):
+        print(f"Generation {generation + 1}")
 
-    for i in range(iter):
-        Tomega[i].pop()
-        plt.plot(T[i], Tomega[i])
-    plt.title('Зависимость равновесной температуры поверхности КЛА от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('T, K')
-    plt.grid(True)
-    plt.show()
+        # Оценка приспособленности
+        fitness_scores = []
+        parent_conns = []
+        last_V_values = []
+        tasks = []
 
-    for i in range(iter):
-        T[i] = T[i][:50000]
-        P_list[i] = P_list[i][:50000]
-        plt.plot(T[i], P_list[i], label=f'Вариант {i + 1}')
-    plt.title('Тяга двигателей', fontsize=16, fontname='Times New Roman')
-    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Н', fontsize=16, fontname='Times New Roman')
-    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
-    plt.grid(True)
-    plt.show()
+        # Создаем пул процессов
+        pool = multiprocessing.Pool(processes=POPULATION_SIZE)
 
-    for i in range(iter):
-        #Qk[i].pop()
-        T[i] = T[i][:4000]
-        Qk[i] = Qk[i][:4000]
-        plt.plot(T[i], Qk[i])
-    #plt.figure(figsize=(12, 5))
-    plt.title('Зависимость плотности конвективного теплового потока от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('Q, КВт/м^2')
-    plt.grid(True)
-    plt.show()
+        for i, chromosome in enumerate(population):
+            parent_conn, child_conn = multiprocessing.Pipe()  # Создаем канал для каждого процесса
+            parent_conns.append(parent_conn)
+            tasks.append((chromosome, child_conn))  # Формируем задачи для передачи в пул
 
-    for i in range(iter):
-        T[i] = T[i][:4000]
-        Quantitiy_warm[i] = Quantitiy_warm[i][:4000]
-        plt.plot(T[i], Quantitiy_warm[i])
-    plt.title('Зависимость полного количества тепла к единице поверхности КЛА от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('Q, KДж/м^2')
-    plt.grid(True)
-    plt.show()
+        # Запускаем задачи асинхронно с отслеживанием завершения
+        for task in tasks:
+            pool.apply_async(fitness, task)
 
-    for i in range(iter):
-        T[i] = T[i][:4000]
-        Tomega[i] = Tomega[i][:4000]
-        plt.plot(T[i], Tomega[i])
-    plt.title('Зависимость равновесной температуры поверхности КЛА от времени')
-    plt.xlabel('Время, с')
-    plt.ylabel('T, K')
-    plt.grid(True)
-    plt.show()
+        # Получаем результаты
+        for i, conn in enumerate(parent_conns):
+            try:
+                if not conn.closed:  # Проверяем, что канал открыт
+                    result = conn.recv()  # Получаем результат
+                    # Распаковываем результат
+                    (local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+                     local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P,
+                     last_V) = result  # last_V - последнее значение V
+                    last_V_values.append(last_V)  # Сохраняем last_V
+
+                    # Добавляем last_V в fitness_scores
+                    fitness_scores.append(last_V)
+            except (EOFError, BrokenPipeError) as e:
+                print(f"Ошибка при получении данных: {e}")
+                fitness_scores.append(0)  # Добавляем значение по умолчанию
+            finally:
+                if not conn.closed:
+                    conn.close()  # Закрываем канал после получения данных
+
+        # Закрываем пул процессов
+        pool.close()
+        pool.join()
+
+        # Селекция
+        selected = selection(population, fitness_scores)
+
+        # Скрещивание и мутация
+        new_population = []
+        for _ in range(POPULATION_SIZE // 2):
+            parent1, parent2 = random.sample(selected, 2)
+            child1 = crossover(parent1, parent2)
+            child2 = crossover(parent2, parent1)
+            new_population.append(mutate(child1))
+            new_population.append(mutate(child2))
+
+        population = new_population
+
+    # Возвращаем лучшую хромосому
+    best_index = np.argmax(fitness_scores)
+    best_chromosome = population[best_index]
+    best_last_V = last_V_values[best_index]  # Сохраняем last_V для лучшей хромосомы
+    return best_chromosome, best_last_V
+
+
+
+# Запуск генетического алгоритма
+if __name__ == '__main__':
+    POPULATION_SIZE = 30
+    GENERATIONS = 10
+    MUTATION_RATE = 0.1
+    best_chromosome, best_last_V = genetic_algorithm()
+    print("Лучшая скорость V:", best_last_V)
+    print("Оптимальные значения:", best_chromosome)
+    #iter = POPULATION_SIZE
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(elapsed_time)
+
+
+

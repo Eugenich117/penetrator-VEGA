@@ -119,6 +119,38 @@ def newton_interpolation(x, y, xi):
     return result
 
 
+def wind(h, t, next_update_time, V_wind, wind_angle):
+    bounds = [0, 10_000, 30_000, 50_000, 70_000, 100_000, 125_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000,
+              450_000, float('inf')]
+    # Функциидлявычисленияv_windвзависимостиотдиапазона
+    actions = [
+        lambda: random.uniform(10, 20),  # 0<h<10
+        lambda: random.uniform(20, 35),  # 10<h<30
+        lambda: random.uniform(35, 45),  # 30<h<50
+        lambda: random.uniform(45, 60),  # 50<h<70
+        lambda: random.uniform(60, 75),  # 70<h<100
+        lambda: random.uniform(75, 100),  # 100<h<125
+        lambda: random.uniform(100, 110),  # 125<h<150
+        lambda: random.uniform(110, 125),  # 150<h<200
+        lambda: random.uniform(125, 130),  # 200<h<250
+        lambda: random.uniform(130, 140),  # 250<h<300
+        lambda: random.uniform(140, 145),  # 300<h<350
+        lambda: random.uniform(145, 147),  # 350<h<400
+        lambda: random.uniform(147, 150),  # 400<h<450
+
+        lambda: 150  #h>200
+        ]
+    #Находим индекс диапазона с помощью bisect
+    index = bisect.bisect_right(bounds, h) - 1
+
+    if t >= next_update_time:
+        V_wind = actions[index]()  # Генерируем новую скорость ветра
+        wind_angle = random.uniform(0, m.pi)  # Генерируем новый угол ветра
+        wind_timer = random.uniform(0.2, 10)  # Случайный таймер
+        next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+    return V_wind, wind_angle, next_update_time
+
+
 def Get_ro(R): # В основной функции всё в метрах, в полиноме в километрах
 
     x = [450, 445, 440, 435, 430, 425, 420, 415, 410, 405, 400, 395, 390, 385, 380, 375, 370,
@@ -142,25 +174,29 @@ def Get_ro(R): # В основной функции всё в метрах, в �
     ro = newton_interpolation_ro(x, y, R / 1000)
     return ro
 
+def Cx_wind(M):
+    x = [0, 0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
+         12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+         39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
+    y = [0.15, 0.15, 0.18, 0.3, 0.38, 0.81, 0.92, 0.97, 0.995, 0.991, 0.985, 0.98, 0.975, 0.97, 0.955, 0.935, 0.925,
+         0.91, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
+         0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
+         0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
+         0.9, 0.9, 0.9, 0.9]
+    return newton_interpolation(x, y, M)
+
+
 
 def Cx(M):
     x = [0, 0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
          12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66,
          67]
-    '''конус'''
-    '''
     y = [0.75, 0.8, 0.9, 1.1, 1.3, 1.45, 1.52, 1.55, 1.6, 1.7, 1.8, 1.78, 1.75, 1.7, 1.65, 1.6, 1.55, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
-         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52]'''
-    '''сфера'''
-    y = [0.15, 0.15, 0.18, 0.3, 0.38, 0.81, 0.92, 0.97, 0.995, 0.991, 0.985, 0.98, 0.975, 0.97, 0.955, 0.935, 0.925,
-         0.91, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
-         0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
-         0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9,
-         0.9, 0.9, 0.9, 0.9]
+         1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52]
     return newton_interpolation(x, y, M)
 
 
@@ -240,6 +276,7 @@ def dV_func(initial):
     V_wind_x = V_wind*m.sin(wind_angle)#Вдольтраектории
     #dV=((-1/(2*Px))*Cxa*ro*V**2-((gravy_const*mass_planet)/R**2)*scipy.special.sindg(tetta))*dt#ОСНОВНАЯМОДЕЛЬКОСЕНКОВОЙ
     dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass
+    #dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -271,28 +308,6 @@ def dR_func(initial):
     V_wind = V_wind * m.cos(wind_angle)#Вдольтраектории
     dR = (m.sqrt(V**2 + V_wind**2) * m.sin(tetta))
     return dR, 'R'
-
-
-def wind(h):
-    bounds = [0, 6, 28, 36, 48, 61, 76, 94, 100, float('inf')]
-    #Функциидлявычисленияv_windвзависимостиотдиапазона
-    actions=[
-    lambda:random.uniform(0, 7),#0<h<6
-    lambda:random.uniform(0, 25),#6<h<26
-    lambda:random.uniform(15, 35),#27<h<36
-    lambda:random.uniform(30, 60),#37<h<48
-    lambda:random.uniform(50, 80),#48<h<61
-    lambda:random.uniform(50, 100),#61<h<76
-    lambda:random.uniform(50, 70),#76<h<94
-    lambda:random.uniform(0, 12),#94<h<100
-    lambda:0#h>100
-    ]
-    #Находим индекс диапазона с помощью bisect
-    index=bisect.bisect_right(bounds, h)-1
-
-    #Выполняем соответствующую функцию
-    return actions[index]()
-
 
 
 def runge_kutta_4(equations, initial, dt, dx):
@@ -345,7 +360,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     t = 0
     d = 0.92
     S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = random.uniform(48_000, 46_900), random.uniform(-15, -5) * cToRad, Rb + h, 0
+    V, tetta, R, L = random.uniform(47_000, 46_900), random.uniform(-9, -7) * cToRad, Rb + h, 0
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
@@ -353,15 +368,18 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
     local_PX = []; local_acceleration = []
-
+    V_wind = 0
+    wind_angle = 0
+    next_update_time = -1
     while R >= Rb:
         mah = M(R - Rb)
         ro = Get_ro(R - Rb)
         Cxa = Cx(mah)
         Px = mass / Cxa * S
-        V_wind, wind_angle, Cxa_wind = 1, 1, 1
-        initial.update({'Px': Px, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L,
-                        'V': V, 'R': R})
+        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+        Cxa_wind = Cx_wind(mah)
+        initial.update({'Px': Px, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+            'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -481,7 +499,7 @@ if __name__ == '__main__':
 
     for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
-    plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
+    plt.title('Траектории спуска', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)

@@ -7,6 +7,8 @@ import scipy
 import bisect
 import random
 from scipy.integrate import quad
+from findiff import FinDiff
+import numpy as np
 # мат модель из книжки воронцова упрощенная
 
 r1 = 0.4
@@ -23,7 +25,7 @@ g = 9.80665
 
 S = (m.pi * d ** 2)/4
 L = 0
-tetta = -0.017  # * (m.pi / 180)
+tetta = -0.034  # * (m.pi / 180)
 V = 7600  # Используем тип данняых float64
 dt = 0.01
 t = 0.0
@@ -161,7 +163,7 @@ def Cx(xi, V_sound):
     x = [0, 0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
          12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
-    y = [0.75, 0.8, 0.9, 1.1, 1.3, 1.45, 1.52, 1.55, 1.6, 1.7, 1.8, 1.78, 1.75, 1.7, 1.65, 1.6, 1.55, 1.52, 1.52, 1.52,
+    y = [0.75, 0.8, 0.9, 1.1, 1.3, 1.45, 1.51, 1.55, 1.6, 1.7, 1.8, 1.78, 1.75, 1.7, 1.65, 1.6, 1.55, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
@@ -244,8 +246,9 @@ def dR_func(initial):
 def qk_func(initial):
     ro = initial['ro']
     V = initial['V']
-    dqk = (19.87 / m.sqrt(0.5)) * m.sqrt(ro / 1.225) * (V / 7900) ** 3.2
+    dqk = ((1.318 * 10 ** 5) / m.sqrt(0.5)) * ((ro / 1.2255) ** 0.5) * ((V / 7910) ** 3.25)
     return dqk, 'qk'
+    #return ((1.318 * 10 ** 5) / m.sqrt(0.5)) * m.sqrt(ro / 1.2255) * (V / 7910) ** 3.25
 
 
 def quantity_func(qk):
@@ -307,10 +310,10 @@ while R >= Rb:
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
     xd = 0.06
-    Cya = 0.025
-    K = 0.15
+    Cya = 0.018 #0
+    K = 0.3 #0
     gamma = 0.009
-    alfa = (gamma/xd) * (Cxa/(Cya + Cxa))
+    alfa = (gamma/xd) * (Cxa/(Cya + Cxa)) #0
     Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
     Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
     initial.update({'qk': qk, 'tetta': tetta, 'Cya': Cya, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
@@ -325,16 +328,16 @@ while R >= Rb:
     quantity_warm, error = quad(quantity_func, 0, t)
 
     Quantitiy_warm.append(quantity_warm)
-    Tomega.append((qk/(0.8 * 5.67*10**(-11)))**0.25)
-    Qk.append(qk)
+    Tomega.append((qk/(0.8 * 5.67 * 10**(-8)))**0.25)
+    Qk.append(qk/1000)
     TETTA.append(tetta * cToDeg)
     X.append(L)
     Y.append(R-Rb)
     V_MOD.append(V)
     T.append(t)
     napor.append(0.5*ro*V**2)
-    ny.append((0.5 * S * Cya * ro * V ** 2)/(mass * (g * Rb ** 2 / R ** 2)))
-    nx.append((0.5 * S * Cxa * ro * V ** 2)/(mass * (g * Rb ** 2 / R ** 2)))
+    ny.append((0.5 * S * Cya * ro * V ** 2) / (mass * (g * Rb ** 2 / R ** 2)))
+    nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * (g * Rb ** 2 / R ** 2)))
     PX.append(Px)
     #print(f'V = {V:.3f}, tetta = {tetta:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t}, nx ={(0.5 * S * Cxa * ro * V ** 2)/(mass*((gravy_const*mass_planet)/R**2))}')
 
