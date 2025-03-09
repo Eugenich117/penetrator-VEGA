@@ -338,7 +338,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     while R >= Rb:
         V_wind = wind(R - Rb)
         wind_angle = random.uniform(0, m.pi)
-        omega_b = 2.9926 * 10 ** -7  # Угловаяскоростьвращенияпланеты,рад/с
+        omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
         Cxa = Cx(V, V_sound)

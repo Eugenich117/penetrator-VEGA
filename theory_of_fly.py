@@ -244,7 +244,7 @@ def dR_func(initial):
 def qk_func(initial):
     ro = initial['ro']
     V = initial['V']
-    dqk = (19.87 / m.sqrt(0.5)) * m.sqrt(ro / 1.225) * (V / 7600) ** 3.2
+    dqk = (19.87 / m.sqrt(0.5)) * m.sqrt(ro / 1.225) * (V / 7900) ** 3.2
     return dqk, 'qk'
 
 

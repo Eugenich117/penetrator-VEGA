@@ -256,8 +256,8 @@ def dR_func(initial):
     return dR, 'R'
 
 
-def wind(h):
-    bounds = [0, 6, 28, 36, 48, 61, 76, 94, 100, float('inf')]
+def wind(h, t, next_update_time, V_wind, wind_angle):
+    bounds = [0, 6_000, 28_000, 36_000, 48_000, 61_000, 76_000, 94_000, 100_000, float('inf')]
     #Функциидлявычисленияv_windвзависимостиотдиапазона
     actions=[
     lambda:random.uniform(0, 7),#0<h<6
@@ -271,10 +271,15 @@ def wind(h):
     lambda:0#h>100
     ]
     #Находим индекс диапазона с помощью bisect
-    index=bisect.bisect_right(bounds, h)-1
+    index = bisect.bisect_right(bounds, h)-1
 
-    #Выполняем соответствующую функцию
-    return actions[index]()
+    if t >= next_update_time:
+        V_wind = actions[index]()  # Генерируем новую скорость ветра
+        wind_angle = random.uniform(0, m.pi)  # Генерируем новый угол ветра
+        wind_timer = random.uniform(0.2, 10)  # Случайный таймер
+        next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+    return V_wind, wind_angle, next_update_time
+
 
 def runge_kutta_4(equations, initial, dt, dx):
     '''equations - это список названий функций с уравнениями для системы
@@ -364,11 +369,13 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     initial['mass'] = mass
 
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
-    local_PX = []; local_acceleration = []
+    local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
     lam, phi, epsilon = 0, 0, 0
+    next_update_time = -1
+    V_wind = 0
+    wind_angle = 0
     while R >= Rb:
-        V_wind = wind(R - Rb)
-        wind_angle = random.uniform(0, m.pi)
+        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         omega_b = 2.9926 * 10 ** -7  # Угловаяскоростьвращенияпланеты,рад/с
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
@@ -379,14 +386,16 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         K=Cya/Cxa'''
 
         initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind, 'omega_b': omega_b,
-                        'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L,
-                        'V': V, 'R': R})
+          'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
         tetta = values[2]
         R = values[3]
         t += dt
+
+        local_wind_angle.append(wind_angle)
+        local_v_wind.append(V_wind)
         local_TETTA.append(tetta * cToDeg)
         local_X.append(L)
         local_Y.append(R - Rb)
@@ -405,7 +414,8 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     for j in range(1, len(local_V_MOD)):
         derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
         local_acceleration.append(derivative_value)
-    result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
+    result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+              local_acceleration, local_v_wind, local_wind_angle)
     pipe_conn.send(result)  # Передаем данные
     pipe_conn.close()  # Закрываем трубу
     #queue.put(result, block=False)
@@ -413,7 +423,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 100 #количество итераций
+    iter = 10 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -448,7 +458,8 @@ if __name__ == '__main__':
     PX = ([[] for _ in range(iter)])
     nx = ([[] for _ in range(iter)])
     V_MOD = ([[] for _ in range(iter)])
-
+    V_WIND = ([[] for _ in range(iter)])
+    WIND_ANGLE = ([[] for _ in range(iter)])
     processes = []
     parent_conns = []
     child_conns = []
@@ -487,7 +498,7 @@ if __name__ == '__main__':
     for i in range(iter):
         result = parent_conns[i].recv()
         (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-             local_acceleration) = result
+             local_acceleration, local_v_wind, local_wind_angle) = result
         TETTA[i] = local_TETTA
         X[i] = local_X
         Y[i] = local_Y
@@ -497,6 +508,8 @@ if __name__ == '__main__':
         nx[i] = local_nx
         PX[i] = local_PX
         acceleration[i] = local_acceleration
+        WIND_ANGLE[i] = local_wind_angle
+        V_WIND[i] = local_v_wind
 
     for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
@@ -592,6 +605,28 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
+    for i in range(iter):
+        ic(len(WIND_ANGLE[i]), len(V_WIND[i]), len(T[i]))
+        V_WIND[i].pop()
+        plt.plot(T[i], V_WIND[i], label=f'Вариант {i + 1}')
+    plt.title('Скорость ветра от времени', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
+    plt.ylabel(r'м/с', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    #plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    for i in range(iter):
+        WIND_ANGLE[i].pop()
+        plt.plot(T[i], WIND_ANGLE[i], label=f'Вариант {i + 1}')
+    plt.title('Угол действия ветра от времени', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
+    plt.ylabel(r'Рад/с', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    #plt.legend()
+    plt.grid(True)
+    plt.show()
 
     for i in range(iter):
         T[i] = T[i][:3000]
