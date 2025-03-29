@@ -14,6 +14,7 @@ import bisect
 import sqlite3
 import pandas as pd
 from scipy.integrate import quad
+import gc
 # мат модель из книжки воронцова упрощенная
 
 
@@ -491,9 +492,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
     v_gas = 2453
-    p_soplar = 101_000
+    #p_soplar = 101_000
     mass_consumption = 0.8
     S_soplar = 0.0266
+    p_soplar = pressure_func(50_000 - ((50_000 - 48_000) / 2))
     while R >= Rb + 48_000:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
@@ -534,7 +536,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
-    print(f' с движком V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
+    print(f' с движком V = {V:.3f}, P = {np.max(local_P)}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
     v_gas = 0
     p_soplar = 0
@@ -586,39 +588,50 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_acceleration.append(derivative_value)
     result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
               local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P)
-    pipe_conn.send(result)  # Передаем данные
-    pipe_conn.close()  # Закрываем трубу
-    #queue.put(result, block=False)
+    try:
+        # 1. Отправка данных + автоматическое закрытие трубы (лучшая практика)
+        with pipe_conn:
+            pipe_conn.send(result)
 
+        # 2. Принудительная очистка памяти (опционально, для больших данных)
+        del result  # Удаляем ссылку на кортеж
+        gc.collect()  # Ускоряем освобождение памяти (если данные огромные)
+
+        # 3. Очистка списков (если они больше не нужны)
+        local_P.clear()
+        local_Quantitiy_warm.clear()
+        local_Tomega.local_T.clear()
+        local_Qk.clear()
+        local_wind_angle.clear()
+        local_v_wind.clear()
+        local_TETTA.clear()
+        local_X.clear()
+        local_Y.clear()
+        local_V_MOD.clear()
+        local_T.clear()
+        local_napor.clear()
+        local_nx.clear()
+        local_PX.clear()
+
+
+    except (BrokenPipeError, EOFError) as e:
+        # Обработка ошибок (например, если родительский процесс завершился раньше)
+        if not pipe_conn.closed:
+            print(f"Ошибка передачи данных в процессе {i}: {e}")
+            result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+                      local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk,
+                      local_P)
+            pipe_conn.send(result)  # Передаем данные
+            pipe_conn.close()  # Закрываем трубу
+    # queue.put(result, block=False)
 
 
 if __name__ == '__main__':
     iter = 10 #количество итераций
     dx = ['V', 'L', 'tetta', 'R', 'qk']
     equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
-    #with multiprocessing.Manager() as manager:
 
-        # Создаем списки через менеджера
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list([[] for _ in range(5)])
-    napor = manager.list([manager.list() for _ in range(5)])
-    TETTA = manager.list([manager.list() for _ in range(5)])
-    X = manager.list([manager.list() for _ in range(5)])
-    Y = manager.list([manager.list() for _ in range(5)])
-    T = manager.list([manager.list() for _ in range(5)])
-    PX = manager.list([manager.list() for _ in range(5)])
-    nx = manager.list([manager.list() for _ in range(5)])
-    V_MOD = manager.list([manager.list() for _ in range(5)])'''
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list()
-    napor = manager.list()
-    TETTA = manager.list()
-    X = manager.list()
-    Y = manager.list()
-    T = manager.list()
-    PX = manager.list()
-    nx = manager.list()
-    V_MOD = manager.list()'''
+
     acceleration = ([[] for _ in range(iter)])
     napor = ([[] for _ in range(iter)])
     TETTA = ([[] for _ in range(iter)])
@@ -656,23 +669,12 @@ if __name__ == '__main__':
     for task in tasks:
         pool.apply_async(compute_trajectory, task)
 
-    '''for i in range(iter):
-        parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
-        parent_conns.append(parent_conn)
-        child_conns.append(child_conn)
-        p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
-        p.start()
-        processes.append(p)'''
-
-    '''results = []
-    while not queue.empty():
-        results.append(queue.get())'''
-
     # Обработка результатов
     for i in range(iter):
         result = parent_conns[i].recv()
         (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-        local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P) = result
+                  local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk,
+                  local_P) = result
         TETTA[i] = local_TETTA
         X[i] = local_X
         Y[i] = local_Y
@@ -689,94 +691,76 @@ if __name__ == '__main__':
         Qk[i] = local_Qk
         P_list[i] = local_P
 
-    data = {
-        "acceleration": acceleration,
-        "napor": napor,
-        "TETTA": TETTA,
-        "X": X,
-        "Y": Y,
-        "T": T,
-        "PX": PX,
-        "nx": nx,
-        "V_MOD": [arr[-1:] for arr in V_MOD if arr],
-    }
-
-    # Перебираем каждый массив и находим min и max
-    for key, values in data.items():
-        all_values = np.concatenate(values)  # Объединяем все списки в один массив
-        min_val = np.min(all_values)
-        max_val = np.max(all_values)
-        print(f"{key}: min = {min_val}, max = {max_val}")
-
     for i in range(iter):
-        plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
+        plt.plot(X[i], Y[i], label=f'Вариант {i + 1}')
     plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        plt.plot(T[i], Y[i], label=f'Вариант {i+1}')
+        plt.plot(T[i], Y[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость высоты от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        plt.plot(T[i], V_MOD[i], label=f'Вариант {i+1}')
+        plt.plot(T[i], V_MOD[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость модуля скорости от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Время, c", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        plt.plot(Y[i], V_MOD[i], label=f'Вариант {i+1}')
+        plt.plot(Y[i], V_MOD[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость модуля скорости от высоты', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Высота, м", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
+        plt.plot(T[i], TETTA[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость траекторного угла от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        plt.plot(T[i], napor[i], label=f'Вариант {i+1}')
+        plt.plot(T[i], napor[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость скоростного напора от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
-    plt.ylabel(r'Скоростной напор, $\frac{\mathrm{кг}}{\mathrm{м} \cdot \mathrm{с}^{2}}$', fontsize=16, fontname='Times New Roman')
+    plt.ylabel(r'Скоростной напор, $\frac{\mathrm{кг}}{\mathrm{м} \cdot \mathrm{с}^{2}}$', fontsize=16,
+               fontname='Times New Roman')
     plt.subplots_adjust(left=0.25, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
-    #T.pop()# Убираем последний элемент из списка времени
+    # T.pop()# Убираем последний элемент из списка времени
     for i in range(iter):
         T[i].pop()
-        plt.plot(T[i], acceleration[i], label=f'Вариант {i+1}')
+        plt.plot(T[i], acceleration[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость ускорения от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Ускорение м$^2$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -787,7 +771,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Перегрузка, g', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -798,7 +782,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Px, $\frac{кг}{м^2}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -809,7 +793,7 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'м/с', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -820,14 +804,14 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Рад/с', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
         Qk[i].pop()
         plt.plot(T[i], Qk[i])
-    #plt.figure(figsize=(12, 5))
+    # plt.figure(figsize=(12, 5))
     plt.title('Зависимость плотности конвективного теплового потока от времени')
     plt.xlabel('Время, с')
     plt.ylabel('Q, КВт/м^2')
@@ -860,16 +844,16 @@ if __name__ == '__main__':
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Н', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    #plt.legend()
+    # plt.legend()
     plt.grid(True)
     plt.show()
 
     for i in range(iter):
-        #Qk[i].pop()
+        # Qk[i].pop()
         T[i] = T[i][:4000]
         Qk[i] = Qk[i][:4000]
         plt.plot(T[i], Qk[i])
-    #plt.figure(figsize=(12, 5))
+    # plt.figure(figsize=(12, 5))
     plt.title('Зависимость плотности конвективного теплового потока от времени')
     plt.xlabel('Время, с')
     plt.ylabel('Q, КВт/м^2')
@@ -895,6 +879,25 @@ if __name__ == '__main__':
     plt.ylabel('T, K')
     plt.grid(True)
     plt.show()
+
+    data = {
+        "acceleration": acceleration,
+        "napor": napor,
+        "TETTA": TETTA,
+        "X": X,
+        "Y": Y,
+        "T": T,
+        "PX": PX,
+        "nx": nx,
+        "V_MOD": V_MOD,
+    }
+
+    # Перебираем каждый массив и находим min и max
+    for key, values in data.items():
+        all_values = np.concatenate(values)  # Объединяем все списки в один массив
+        min_val = np.min(all_values)
+        max_val = np.max(all_values)
+        print(f"{key}: min = {min_val}, max = {max_val}")
 
     end_time = time.time()
     elapsed_time = end_time - start_time

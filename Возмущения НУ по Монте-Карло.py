@@ -257,18 +257,27 @@ def dR_func(initial):
 
 
 def wind(h, t, next_update_time, V_wind, wind_angle):
-    bounds = [0, 6_000, 28_000, 36_000, 48_000, 61_000, 76_000, 94_000, 100_000, float('inf')]
+    bounds = [0, 2_000, 6_000, 10_000, 18_000, 28_000, 36_000, 42_000, 48_000,
+              55_000, 61_000, 68_000, 76_000, 85_000, 94_000, 100_000, float('inf')]
+
     #Функциидлявычисленияv_windвзависимостиотдиапазона
     actions=[
-    lambda:random.uniform(0, 7),#0<h<6
-    lambda:random.uniform(0, 25),#6<h<26
-    lambda:random.uniform(15, 35),#27<h<36
-    lambda:random.uniform(30, 60),#37<h<48
-    lambda:random.uniform(50, 80),#48<h<61
-    lambda:random.uniform(50, 100),#61<h<76
-    lambda:random.uniform(50, 70),#76<h<94
-    lambda:random.uniform(0, 12),#94<h<100
-    lambda:0#h>100
+        lambda: random.uniform(0, 3),  # 0 - 2 км
+        lambda: random.uniform(3, 7),  # 2 - 6 км
+        lambda: random.uniform(7, 15),  # 6 - 10 км
+        lambda: random.uniform(15, 25),  # 10 - 18 км
+        lambda: random.uniform(25, 35),  # 18 - 28 км
+        lambda: random.uniform(30, 40),  # 28 - 36 км
+        lambda: random.uniform(35, 50),  # 36 - 42 км
+        lambda: random.uniform(45, 60),  # 42 - 48 км
+        lambda: random.uniform(55, 70),  # 48 - 55 км
+        lambda: random.uniform(65, 80),  # 55 - 61 км
+        lambda: random.uniform(70, 90),  # 61 - 68 км
+        lambda: random.uniform(85, 100),  # 68 - 76 км
+        lambda: random.uniform(75, 85),  # 76 - 85 км
+        lambda: random.uniform(60, 75),  # 85 - 94 км
+        lambda: random.uniform(10, 20),  # 94 - 100 км
+        lambda: 0  # Выше 100 км
     ]
     #Находим индекс диапазона с помощью bisect
     index = bisect.bisect_right(bounds, h)-1
@@ -423,7 +432,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 10 #количество итераций
+    iter = 100 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:

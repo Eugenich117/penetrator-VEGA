@@ -14,6 +14,7 @@ import bisect
 import sqlite3
 import pandas as pd
 from scipy.integrate import quad
+import gc
 # мат модель из книжки воронцова упрощенная
 
 
@@ -435,7 +436,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
     print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
-    initial['mass'] = mass
+    initial['mass'] = mass + (chromosome['mass_consumption'] * 30)
 
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
     local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []; local_Quantitiy_warm = []
@@ -491,9 +492,8 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
 
     print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
     mass_consumption = chromosome['mass_consumption']
-    v_gas = chromosome['v_gas']
     p_soplar = pressure_func(h_vcl - ((h_vcl - h_stop)/2))
-    S_soplar = chromosome['S_soplar']
+    S_soplar = (mass_consumption * 1550 * 1.8) / 2.533e+7
     while R >= Rb + h_stop:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
@@ -502,6 +502,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
         Cxa = Cx(V, V_sound)
         Cxa_wind = Cx_wind(V, V_sound)
         Px = mass / Cxa * S
+        v_gas = m.sqrt(2 * 2000 * 3500 * (1 - (101325 / 2.533e+7) ** (0.2 / 1.2)))
         initial.update({'Px': Px, 'I_ud': I_ud, 'P': P, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind,
             'omega_b': omega_b, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro,
             'mass': mass, 'L': L, 'V': V, 'R': R, 'pressure': pressure, 'v_gas': v_gas, 'p_soplar': p_soplar, 'qk': qk,
@@ -514,8 +515,6 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
         qk = values[4]
         mass -= mass_consumption * dt
         P = v_gas * mass_consumption + S_soplar * (p_soplar - pressure)  # (P / ((g * Rb**2/R**2) * I_ud))
-        '''if P <= 0:
-            P = 0'''
         t += dt
         #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
@@ -534,7 +533,10 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
-    print(f' с движком V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
+        if (mass <= 150) or (R <= Rb):
+            break
+
+    print(f' с движком V = {V:.3f}, P = {np.max(local_P)}, давление на срезе сопла = {p_soplar:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
     v_gas = 0
     p_soplar = 0
@@ -584,40 +586,57 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
     for j in range(1, len(local_V_MOD)):
         derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
         local_acceleration.append(derivative_value)
-    result = (local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-              local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P,
-              local_V_MOD[-1])
-    pipe_conn.send(result)  # Передаем данные
-    pipe_conn.close()  # Закрываем трубу
+
+    result = (
+        local_V_MOD[-1],  # Последнее значение скорости V
+        local_P[-1],      # Последнее значение давления P
+        p_soplar,         # Давление на срезе сопла
+        tetta * cToDeg,   # Угол тетта в градусах
+        L,                # Дальность
+        (R - Rb),         # Высота
+        t,                # Время
+        mass              # Масса
+    )
+    try:
+        # 1. Отправка данных + автоматическое закрытие трубы (лучшая практика)
+        with pipe_conn:
+            pipe_conn.send(result)
+
+        # 2. Принудительная очистка памяти (опционально, для больших данных)
+        del result  # Удаляем ссылку на кортеж
+        gc.collect()  # Ускоряем освобождение памяти (если данные огромные)
+
+    except (BrokenPipeError, EOFError) as e:
+        # Обработка ошибок (например, если родительский процесс завершился раньше)
+        if not pipe_conn.closed:
+            print(f"Ошибка передачи данных в процессе {i}: {e}")
+            result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+                      local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk,
+                      local_P)
+            pipe_conn.send(result)  # Передаем данные
+            pipe_conn.close()  # Закрываем трубу
     #queue.put(result, block=False)
 
-PARAM_BOUNDS = {
-    'h_vcl': (10_000, 1_000),
-    'h_stop': (5_000, 500),
-    'mass_consumption': (0.4, 1.5),
-    'v_gas': (2000, 3000),
-    'S_soplar': (0.02, 0.7)
-}
-
 # Границы параметров
-'''PARAM_BOUNDS = {
-    'h_vcl': (50_000, 60_000),
-    'h_stop': (45_000, 55000),
-    'mass_consumption': (0.4, 1.5),
-    'v_gas': (2000, 3000),
-    'S_soplar': (0.02, 0.7)
-}'''
-
+PARAM_BOUNDS = {
+    'h_vcl': (1_000, 60_000),
+    'h_stop': (500, 55_000),
+    'mass_consumption': (2.5, 7.5),
+}
 
 # Функция для создания случайной хромосомы
 def create_chromosome():
-    return {
-        'h_vcl': random.uniform(*PARAM_BOUNDS['h_vcl']),
-        'h_stop': random.uniform(*PARAM_BOUNDS['h_stop']),
-        'mass_consumption': random.uniform(*PARAM_BOUNDS['mass_consumption']),
-        'v_gas': random.uniform(*PARAM_BOUNDS['v_gas']),
-        'S_soplar': random.uniform(*PARAM_BOUNDS['S_soplar'])
-    }
+    while True:
+        h_vcl = random.uniform(*PARAM_BOUNDS['h_vcl'])
+        h_stop_min = max(PARAM_BOUNDS['h_stop'][0], h_vcl - 15000)
+        h_stop_max = min(PARAM_BOUNDS['h_stop'][1], h_vcl - 500)
+        if h_stop_min <= h_stop_max:
+            h_stop = random.uniform(h_stop_min, h_stop_max)
+            return {
+                'h_vcl': h_vcl,
+                'h_stop': h_stop,
+                'mass_consumption': random.uniform(*PARAM_BOUNDS['mass_consumption']),
+            }
 
 
 # Функция для создания начальной популяции
@@ -650,20 +669,55 @@ def selection(population, fitness_scores):
 
 # Скрещивание (одноточечное)
 def crossover(parent1, parent2):
-    child = {}
-    for param in PARAM_BOUNDS:
-        if random.random() < 0.5:
-            child[param] = parent1[param]
+    point = random.randint(1, len(parent1) - 1)  # Случайная точка кроссовера
+    child1 = {}
+    child2 = {}
+    keys = list(parent1.keys())
+    for i, key in enumerate(keys):
+        if i < point:
+            child1[key] = parent1[key]
+            child2[key] = parent2[key]
         else:
-            child[param] = parent2[param]
-    return child
+            child1[key] = parent2[key]
+            child2[key] = parent1[key]
+
+    # Проверяем условия для h_vcl и h_stop
+    if child1['h_vcl'] <= child1['h_stop'] or not (500 < (child1['h_vcl'] - child1['h_stop']) < 15000):
+        # Если условия нарушены, повторяем кроссовер
+        return crossover(parent1, parent2)
+    if child2['h_vcl'] <= child2['h_stop'] or not (500 < (child2['h_vcl'] - child2['h_stop']) < 15000):
+        return crossover(parent1, parent2)
+
+    return child1, child2
+
+
+def roulette_wheel_selection(population, fitness_scores):
+    total_fitness = sum(fitness_scores)
+    probabilities = [fitness / total_fitness for fitness in fitness_scores]
+    selected = random.choices(population, weights=probabilities, k=POPULATION_SIZE)
+    return selected
 
 
 # Мутация
 def mutate(chromosome):
     for param in chromosome:
         if random.random() < MUTATION_RATE:
-            chromosome[param] = random.uniform(*PARAM_BOUNDS[param])
+            if param == 'h_vcl' or param == 'h_stop':
+                # Генерация нового значения с учетом ограничений
+                while True:
+                    new_value = random.uniform(*PARAM_BOUNDS[param])
+                    if param == 'h_vcl':
+                        h_stop = chromosome['h_stop']
+                        if new_value > h_stop and 500 < (new_value - h_stop) < 15000:
+                            chromosome[param] = new_value
+                            break
+                    elif param == 'h_stop':
+                        h_vcl = chromosome['h_vcl']
+                        if h_vcl > new_value and 500 < (h_vcl - new_value) < 15000:
+                            chromosome[param] = new_value
+                            break
+            else:
+                chromosome[param] = random.uniform(*PARAM_BOUNDS[param])
     return chromosome
 
 
@@ -677,9 +731,12 @@ def fitness(chromosome, child_conn):
         dx = ['V', 'L', 'tetta', 'R', 'qk']
         equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
         result = compute_trajectory(equations, dx, child_conn, chromosome)
-        child_conn.send(result)  # Передаем данные
+        child_conn.send(result)  # Передача данных
+    except Exception as e:
+        print(f"Ошибка в fitness: {e}")
+        child_conn.send(None)  # Передаем None, чтобы не было зависаний
     finally:
-        child_conn.close()  # Закрываем канал после отправки данных
+        child_conn.close()  # Закрываем соединение
 
 # Основной цикл генетического алгоритма
 def genetic_algorithm():
@@ -691,43 +748,42 @@ def genetic_algorithm():
         fitness_scores = []
         parent_conns = []
         last_V_values = []
+        last_P_values = []
+        p_soplar_values = []
+        tetta_values = []
+        L_values = []
+        H_values = []
+        t_values = []
+        mass_values = []
         tasks = []
 
         # Создаем пул процессов
         pool = multiprocessing.Pool(processes=POPULATION_SIZE)
 
         for i, chromosome in enumerate(population):
-            parent_conn, child_conn = multiprocessing.Pipe()  # Создаем канал для каждого процесса
+            parent_conn, child_conn = multiprocessing.Pipe()
             parent_conns.append(parent_conn)
-            tasks.append((chromosome, child_conn))  # Формируем задачи для передачи в пул
+            tasks.append((chromosome, child_conn))
 
-        # Запускаем задачи асинхронно с отслеживанием завершения
+        # Запускаем задачи асинхронно
         for task in tasks:
             pool.apply_async(fitness, task)
 
         # Получаем результаты
         for i, conn in enumerate(parent_conns):
-            try:
-                if not conn.closed:  # Проверяем, что канал открыт
-                    result = conn.recv()  # Получаем результат
-                    # Распаковываем результат
-                    (local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-                     local_acceleration, local_v_wind, local_wind_angle, local_Quantitiy_warm, local_Tomega, local_Qk, local_P,
-                     last_V) = result  # last_V - последнее значение V
-                    last_V_values.append(last_V)  # Сохраняем last_V
 
-                    # Добавляем last_V в fitness_scores
-                    fitness_scores.append(last_V)
-            except (EOFError, BrokenPipeError) as e:
-                print(f"Ошибка при получении данных: {e}")
-                fitness_scores.append(0)  # Добавляем значение по умолчанию
-            finally:
-                if not conn.closed:
-                    conn.close()  # Закрываем канал после получения данных
-
-        # Закрываем пул процессов
-        pool.close()
-        pool.join()
+            result = conn.recv()
+            # Распаковываем результат
+            (last_V, last_P, p_soplar, tetta, L, H, t, mass) = result
+            last_V_values.append(last_V)
+            last_P_values.append(last_P)
+            p_soplar_values.append(p_soplar)
+            tetta_values.append(tetta)
+            L_values.append(L)
+            H_values.append(H)
+            t_values.append(t)
+            mass_values.append(mass)
+            fitness_scores.append(last_V)
 
         # Селекция
         selected = selection(population, fitness_scores)
@@ -736,31 +792,65 @@ def genetic_algorithm():
         new_population = []
         for _ in range(POPULATION_SIZE // 2):
             parent1, parent2 = random.sample(selected, 2)
-            child1 = crossover(parent1, parent2)
-            child2 = crossover(parent2, parent1)
+            child1, child2 = crossover(parent1, parent2)
             new_population.append(mutate(child1))
             new_population.append(mutate(child2))
 
         population = new_population
 
-    # Возвращаем лучшую хромосому
+    # Возвращаем лучшую хромосому и параметры
     best_index = np.argmax(fitness_scores)
     best_chromosome = population[best_index]
-    best_last_V = last_V_values[best_index]  # Сохраняем last_V для лучшей хромосомы
-    return best_chromosome, best_last_V
+    best_last_V = last_V_values[best_index]
+    best_last_P = last_P_values[best_index]
+    best_p_soplar = p_soplar_values[best_index]
+    best_tetta = tetta_values[best_index]
+    best_L = L_values[best_index]
+    best_H = H_values[best_index]
+    best_t = t_values[best_index]
+    best_mass = mass_values[best_index]
+
+    return (
+        best_chromosome,
+        best_last_V,
+        best_last_P,
+        best_p_soplar,
+        best_tetta,
+        best_L,
+        best_H,
+        best_t,
+        best_mass
+    )
 
 
 
 # Запуск генетического алгоритма
 if __name__ == '__main__':
     POPULATION_SIZE = 30
-    GENERATIONS = 10
-    MUTATION_RATE = 0.1
-    best_chromosome, best_last_V = genetic_algorithm()
-    print("Лучшая скорость V:", best_last_V)
-    print("Оптимальные значения:", best_chromosome)
-    #iter = POPULATION_SIZE
+    GENERATIONS = 5
+    MUTATION_RATE = 0.3
 
+    (
+        best_chromosome,
+        best_last_V,
+        best_last_P,
+        best_p_soplar,
+        best_tetta,
+        best_L,
+        best_H,
+        best_t,
+        best_mass
+    ) = genetic_algorithm()
+
+    print("Лучшая скорость V:", best_last_V)
+    print("Максимальное давление P:", best_last_P)
+    print("Давление на срезе сопла:", best_p_soplar)
+    print("Угол тетта (град):", best_tetta)
+    print("Дальность L:", best_L)
+    print("Высота H:", best_H)
+    print("Время t:", best_t)
+    print("Масса:", best_mass)
+    print("Оптимальные значения:", best_chromosome)
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(elapsed_time)

@@ -25,8 +25,6 @@ g = 9.80665
 
 S = (m.pi * d ** 2)/4
 L = 0
-tetta = -0.034  # * (m.pi / 180)
-V = 7600  # Используем тип данняых float64
 dt = 0.01
 t = 0.0
 
@@ -297,6 +295,8 @@ def runge_kutta_4(equations, initial, dt, dx):
         derivatives_4[key] = initial[key] + derivative * dt
         new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
     return new_values
+tetta = -0.017  # * (m.pi / 180)
+V = 7600  # Используем тип данняых float64
 qk = 0
 initial = {}
 initial['S'] = S
@@ -307,12 +307,12 @@ equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
 while R >= Rb:
     ro = Get_ro(R - Rb)
     V_sound = v_sound(R - Rb)
-    Cxa = Cx(V, V_sound)
+    Cxa = 0.7 #Cx(V, V_sound)
     Px = mass / Cxa * S
     xd = 0.06
-    Cya = 0.018 #0
-    K = 0.3 #0
-    gamma = 0.009
+    Cya = 0.025 #0
+    K = 0.2 #0
+    gamma = 0.012
     alfa = (gamma/xd) * (Cxa/(Cya + Cxa)) #0
     Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
     Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
