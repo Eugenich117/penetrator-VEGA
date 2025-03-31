@@ -274,9 +274,12 @@ def dV_func(initial):
     wind_angle = initial['wind_angle']
     Cxa_wind = initial['Cxa_wind']
     V_wind_x = V_wind*m.sin(wind_angle)#Вдольтраектории
-    #dV=((-1/(2*Px))*Cxa*ro*V**2-((gravy_const*mass_planet)/R**2)*scipy.special.sindg(tetta))*dt#ОСНОВНАЯМОДЕЛЬКОСЕНКОВОЙ
-    dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass
-    #dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
+    U = initial['U']
+    Cn = initial['Cn']
+    Fn = initial['Fn']
+    #dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass
+    dV = (((ro * g * U * m.sin(tetta)) - mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)) + sign(V_wind_x) *
+           (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -294,8 +297,9 @@ def dtetta_func(initial):
     tetta = initial['tetta']
     R = initial['R']
     V_wind = initial['V_wind']
-
-    dtetta = (( -(g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R))
+    U = initial['U']
+    ro = initial['ro']
+    dtetta = (((ro * g * U * m.cos(tetta)) - (g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R))
     #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
     return dtetta, 'tetta'
 
@@ -356,56 +360,170 @@ def runge_kutta_4(equations, initial, dt, dx):
 
 #(i, napor, TETTA, X, Y, V_MOD, T, PX, nx, acceleration) # передача листов для результатов в явном виде в функцию
 def compute_trajectory(i, equations, dx, pipe_conn):
+    try:
+        mass = 600
+        t = 0
+        d = 0.92
+        S = (m.pi * d ** 2) / 4
+        V, tetta, R, L = random.uniform(47_000, 46_900), random.uniform(-9, -7) * cToRad, Rb + h, 0
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
+        initial = {}
+        Cn, Fn, U = 0, 0, 0
+        initial['S'] = S
+        initial['mass'] = mass
+        local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
+        local_PX = []; local_acceleration = []
+        V_wind = 0
+        wind_angle = 0
+        next_update_time = -1
+        while R >= Rb + 170:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
 
-    t = 0
-    d = 0.92
-    S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = random.uniform(47_000, 46_900), random.uniform(-9, -7) * cToRad, Rb + h, 0
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
-    initial = {}
-    initial['S'] = S
-    initial['mass'] = mass
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+            #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
+        print(f'1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
-    local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
-    local_PX = []; local_acceleration = []
-    V_wind = 0
-    wind_angle = 0
-    next_update_time = -1
-    while R >= Rb:
-        mah = M(R - Rb)
-        ro = Get_ro(R - Rb)
-        Cxa = Cx(mah)
-        Px = mass / Cxa * S
-        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
-        Cxa_wind = Cx_wind(mah)
-        initial.update({'Px': Px, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
-            'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
-        values = runge_kutta_4(equations, initial, dt, dx)
-        V = values[0]
-        L = values[1]
-        tetta = values[2]
-        R = values[3]
-        t += dt
+        mass, Cn, Fn, U = 480, 0.35, 150, 0
+        while R >= Rb + 130:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
 
-        local_TETTA.append(tetta * cToDeg)
-        local_X.append(L)
-        local_Y.append(R - Rb)
-        local_V_MOD.append(V)
-        local_T.append(t)
-        local_napor.append(0.5 * ro * V ** 2)
-        local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
-        local_PX.append(Px)
-        #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+        Cn, Fn, U = 0.65, 350, 0
+        while R >= Rb + 80:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
 
-    for j in range(1, len(local_V_MOD)):
-        derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
-        local_acceleration.append(derivative_value)
-    result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
-    pipe_conn.send(result)  # Передаем данные
-    pipe_conn.close()  # Закрываем трубу
-    #queue.put(result, block=False)
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
+        Cn, Fn, U = 0.78, 450, 0
+        while R >= Rb + 60:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
+
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
+        Cn, Fn, U = 1.1, 450, 0
+        t_stop = t + 10
+        while t <= t_stop:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = 1.28 # Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
+
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
+        for j in range(1, len(local_V_MOD)):
+            derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
+            local_acceleration.append(derivative_value)
+        result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
+        pipe_conn.send(result)  # Передаем данные
+        pipe_conn.close()  # Закрываем трубу
+
+    except Exception as e:
+        print(f"Ошибка в compute_trajectory ({i}): {e}")
+        pipe.send(None)  # Передаем None, чтобы избежать дедлока
+    finally:
+        pipe_conn.close()  # Закрываем соединение в любом случае
 
 
 
@@ -415,29 +533,8 @@ if __name__ == '__main__':
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #dx = ['V', 'tetta', 'epsilon', 'phi', 'lam', 'R']
     #equations = [dV_func, dtetta_func, depsilon_func, dphi_func, dlam_func, dR_func]
-    #with multiprocessing.Manager() as manager:
 
-        # Создаем списки через менеджера
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list([[] for _ in range(5)])
-    napor = manager.list([manager.list() for _ in range(5)])
-    TETTA = manager.list([manager.list() for _ in range(5)])
-    X = manager.list([manager.list() for _ in range(5)])
-    Y = manager.list([manager.list() for _ in range(5)])
-    T = manager.list([manager.list() for _ in range(5)])
-    PX = manager.list([manager.list() for _ in range(5)])
-    nx = manager.list([manager.list() for _ in range(5)])
-    V_MOD = manager.list([manager.list() for _ in range(5)])'''
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list()
-    napor = manager.list()
-    TETTA = manager.list()
-    X = manager.list()
-    Y = manager.list()
-    T = manager.list()
-    PX = manager.list()
-    nx = manager.list()
-    V_MOD = manager.list()'''
+
     acceleration = ([[] for _ in range(iter)])
     napor = ([[] for _ in range(iter)])
     TETTA = ([[] for _ in range(iter)])
@@ -469,18 +566,6 @@ if __name__ == '__main__':
     # Запускаем задачи асинхронно с отслеживанием завершения
     for task in tasks:
         pool.apply_async(compute_trajectory, task)
-
-    '''for i in range(iter):
-        parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
-        parent_conns.append(parent_conn)
-        child_conns.append(child_conn)
-        p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
-        p.start()
-        processes.append(p)'''
-
-    '''results = []
-    while not queue.empty():
-        results.append(queue.get())'''
 
     # Обработка результатов
     for i in range(iter):
