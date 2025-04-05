@@ -430,6 +430,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
     #print(f"поток {i} запущен")
     t = 0
     mass = 150  + (chromosome['mass_consumption'] * 30)
+    mass_stop = 150 + ((chromosome['mass_consumption'] * 30)/3)
     d = 0.8
     S = (m.pi * d ** 2) / 4
     I_ud, P, V, tetta, R, L = 230, 0, random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
@@ -533,7 +534,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
-        if (mass <= 150) or (R <= Rb):
+        if (mass <= (mass_stop)) or (R <= Rb):
             h_stop = (R - Rb)
             break
 
@@ -623,10 +624,11 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
                   local_P)
         pipe_conn.send(result)  # Передаем данные
         pipe_conn.close()  # Закрываем трубу
+
 # Границы параметров
 PARAM_BOUNDS = {
-    'h_vcl': (1_000, 55_000),
-    'h_stop': (150, 50_000),
+    'h_vcl': (500, 3000),
+    'h_stop': (0, 50),
     'mass_consumption': (2.5, 7.5),
 }
 
@@ -724,18 +726,18 @@ def create_population(size):
 def fitness(chromosome, pipe_conn):
     # Здесь вызывается ваша функция compute_trajectory с параметрами из хромосомы
     # Например, можно передать параметры через initial или напрямую в compute_trajectory
-    try:
-        dx = ['V', 'L', 'tetta', 'R', 'qk']
-        equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
-        result = compute_trajectory(equations, dx, pipe_conn, chromosome)
-        pipe_conn.send(result)
-        if result is not None and child_conn.writable:  # Проверяем, можно ли отправить данные
-            child_conn.send(result)
-    except Exception as e:
-        print(f"Ошибка в fitness: {e}")
 
-    finally:
-        child_conn.close()  # Закрываем соединение
+    dx = ['V', 'L', 'tetta', 'R', 'qk']
+    equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
+    result = compute_trajectory(equations, dx, pipe_conn, chromosome)
+    pipe_conn.send(result)
+    if result is not None and child_conn.writable:  # Проверяем, можно ли отправить данные
+        child_conn.send(result)
+    '''except Exception as e:
+        print(f"Ошибка в fitness: {e}")'''
+
+    '''finally:
+        child_conn.close()  # Закрываем соединение'''
 
 # Основной цикл генетического алгоритма
 def genetic_algorithm():
@@ -832,9 +834,9 @@ def genetic_algorithm():
 
 # Запуск генетического алгоритма
 if __name__ == '__main__':
-    POPULATION_SIZE = 28
-    GENERATIONS = 10
-    MUTATION_RATE = 0.3
+    POPULATION_SIZE = 30
+    GENERATIONS = 50
+    MUTATION_RATE = 0.8
 
     (
         best_chromosome,

@@ -295,7 +295,7 @@ def runge_kutta_4(equations, initial, dt, dx):
         derivatives_4[key] = initial[key] + derivative * dt
         new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
     return new_values
-tetta = -0.017  # * (m.pi / 180)
+tetta = -0.051  # * (m.pi / 180)
 V = 7600  # Используем тип данняых float64
 qk = 0
 initial = {}
@@ -311,8 +311,8 @@ while R >= Rb:
     Px = mass / Cxa * S
     xd = 0.06
     Cya = 0.025 #0
-    K = 0.2 #0
-    gamma = 0.012
+    K = 0.3 #0
+    gamma = 0.018
     alfa = (gamma/xd) * (Cxa/(Cya + Cxa)) #0
     Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
     Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)

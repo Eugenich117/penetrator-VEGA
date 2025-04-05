@@ -397,7 +397,8 @@ def save_results_to_db(results):
             generations INTEGER,
             mutation_rate REAL,
             elapsed_time REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PARAM_BOUNDS TEXT
         )
     ''')
 
@@ -405,8 +406,8 @@ def save_results_to_db(results):
     cursor.execute('''
         INSERT INTO optimization_results (
             best_V, best_P, p_soplar, tetta, L, H, t, mass,
-            chromosome, population_size, generations, mutation_rate, elapsed_time
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            chromosome, population_size, generations, mutation_rate, elapsed_time, PARAM_BOUNDS
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', results)
 
     conn.commit()
@@ -829,7 +830,7 @@ def view_all_results():
     column_names = [
         'id', 'best_last_V', 'best_last_P', 'best_p_soplar', 'best_tetta',
         'best_L', 'best_H', 'best_t', 'best_mass', 'best_chromosome',
-        'population_size', 'generations', 'mutation_rate', 'elapsed_time', 'timestamp'
+        'population_size', 'generations', 'mutation_rate', 'elapsed_time', 'timestamp', 'PARAM_BOUNDS'
     ]
 
     for row in rows:
@@ -843,7 +844,7 @@ def view_all_results():
 # Запуск генетического алгоритма
 if __name__ == '__main__':
     POPULATION_SIZE = 30
-    GENERATIONS = 2
+    GENERATIONS = 10
     MUTATION_RATE = 0.8
 
     (
@@ -871,21 +872,8 @@ if __name__ == '__main__':
     elapsed_time = end_time - start_time
     print(elapsed_time)
     #сохранение в бд
-    save_results_to_db((
-        best_last_V,
-        best_last_P,
-        best_p_soplar,
-        best_tetta,
-        best_L,
-        best_H,
-        best_t,
-        best_mass,
-        str(best_chromosome),
-        POPULATION_SIZE,
-        GENERATIONS,
-        MUTATION_RATE,
-        elapsed_time
-    ))
+    save_results_to_db((best_last_V, best_last_P, best_p_soplar, best_tetta, best_L, best_H, best_t, best_mass,
+        str(best_chromosome), POPULATION_SIZE, GENERATIONS, MUTATION_RATE, elapsed_time, str(PARAM_BOUNDS)))
     view_all_results()
 
 

@@ -376,7 +376,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         V_wind = 0
         wind_angle = 0
         next_update_time = -1
-        while R >= Rb + 170:
+        while R >= Rb + 150_000:
             mah = M(R - Rb)
             ro = Get_ro(R - Rb)
             Cxa = Cx(mah)
@@ -403,35 +403,8 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
         print(f'1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
-        mass, Cn, Fn, U = 480, 0.35, 150, 0
-        while R >= Rb + 130:
-            mah = M(R - Rb)
-            ro = Get_ro(R - Rb)
-            Cxa = Cx(mah)
-            Px = mass / Cxa * S
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
-            Cxa_wind = Cx_wind(mah)
-            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
-                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
-            values = runge_kutta_4(equations, initial, dt, dx)
-            V = values[0]
-            L = values[1]
-            tetta = values[2]
-            R = values[3]
-            t += dt
-
-            local_TETTA.append(tetta * cToDeg)
-            local_X.append(L)
-            local_Y.append(R - Rb)
-            local_V_MOD.append(V)
-            local_T.append(t)
-            local_napor.append(0.5 * ro * V ** 2)
-            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
-            local_PX.append(Px)
-        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
-
-        Cn, Fn, U = 0.65, 350, 0
-        while R >= Rb + 80:
+        mass, Cn, Fn, U = 480, 0.35, 50, 0
+        while R >= Rb + 120_000:
             mah = M(R - Rb)
             ro = Get_ro(R - Rb)
             Cxa = Cx(mah)
@@ -457,8 +430,8 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_PX.append(Px)
         print(f'2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
-        Cn, Fn, U = 0.78, 450, 0
-        while R >= Rb + 60:
+        Cn, Fn, U = 0.65, 150, 0
+        while R >= Rb + 100_000:
             mah = M(R - Rb)
             ro = Get_ro(R - Rb)
             Cxa = Cx(mah)
@@ -484,9 +457,62 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_PX.append(Px)
         print(f'3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
+        Cn, Fn, U = 0.85, 300, 0
+        while R >= Rb + 80_000:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
+
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
+        Cn, Fn, U = 0.9, 450, 0
+        while R >= Rb + 40_000:
+            mah = M(R - Rb)
+            ro = Get_ro(R - Rb)
+            Cxa = Cx(mah)
+            Px = mass / Cxa * S
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            Cxa_wind = Cx_wind(mah)
+            initial.update({'S': S, 'U': U, 'Px': Px, 'Cn': Cn, 'Fn': Fn, 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+                'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            L = values[1]
+            tetta = values[2]
+            R = values[3]
+            t += dt
+
+            local_TETTA.append(tetta * cToDeg)
+            local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+        print(f'5) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
         Cn, Fn, U = 1.1, 450, 0
-        t_stop = t + 10
-        while t <= t_stop:
+        while R >= Rb:
             mah = M(R - Rb)
             ro = Get_ro(R - Rb)
             Cxa = 1.28 # Cx(mah)
@@ -510,7 +536,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_napor.append(0.5 * ro * V ** 2)
             local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
             local_PX.append(Px)
-        print(f'4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+        print(f'6) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
         for j in range(1, len(local_V_MOD)):
             derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
