@@ -15,6 +15,7 @@ import sqlite3
 import pandas as pd
 from scipy.integrate import quad
 import gc
+import sqlite3
 # мат модель из книжки воронцова упрощенная
 
 
@@ -279,25 +280,6 @@ def dR_func(initial):
     return dR, 'R'
 
 
-'''def dP_func(initial):
-    v_gas = initial['v_gas']
-    P = initial['P']
-    R = initial['R']
-    p_soplar = initial['p_soplar']
-    pressure = initial['pressure']
-    #mass_consumption = initial['mass_consumption']
-    S_soplar = initial['S_soplar']
-    I_ud = initial['I_ud']
-    dP = v_gas * 0.4 + S_soplar * (p_soplar - pressure) # секундный массовый расход (P / ((g * Rb**2/R**2) * I_ud))
-    return dP, 'P'
-
-
-def dm_func(initial):
-    mass_consumption = initial['mass_consumption']
-    dm = - mass_consumption
-    return dm, 'mass'
-'''
-
 def qk_func(initial):
     ro = initial['ro']
     V = initial['V']
@@ -394,33 +376,40 @@ def runge_kutta_4(equations, initial, dt, dx):
     return new_values
 
 
-def save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-               local_acceleration):
-    conn = sqlite3.connect("trajectories.db")
+def save_results_to_db(results):
+    conn = sqlite3.connect('results.db')
     cursor = conn.cursor()
 
-    # Создаем таблицу, если она не существует
-    cursor.execute('''CREATE TABLE IF NOT EXISTS trajectory_data (
-                        iter INTEGER, time REAL, tetta REAL, x REAL, y REAL, v_mod REAL, 
-                        napor REAL, nx REAL, px REAL, acceleration REAL)''')
+    # Создание таблицы, если её ещё нет
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS optimization_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            best_V REAL,
+            best_P REAL,
+            p_soplar REAL,
+            tetta REAL,
+            L REAL,
+            H REAL,
+            t REAL,
+            mass REAL,
+            chromosome TEXT,
+            population_size INTEGER,
+            generations INTEGER,
+            mutation_rate REAL,
+            elapsed_time REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PARAM_BOUNDS TEXT
+        )
+    ''')
 
-    # Подготавливаем данные для вставки
-    data = list(zip(
-        [i] * len(local_T),
-        local_T,
-        local_TETTA,
-        local_X,
-        local_Y,
-        local_V_MOD,
-        local_napor,
-        local_nx,
-        local_PX,
-        local_acceleration
-    ))
+    # Вставка данных
+    cursor.execute('''
+        INSERT INTO optimization_results (
+            best_V, best_P, p_soplar, tetta, L, H, t, mass,
+            chromosome, population_size, generations, mutation_rate, elapsed_time, PARAM_BOUNDS
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', results)
 
-    # Вставляем данные
-    cursor.executemany("INSERT INTO trajectory_data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
-    #print('sucsess')
     conn.commit()
     conn.close()
 
@@ -434,7 +423,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
     d = 0.8
     S = (m.pi * d ** 2) / 4
     I_ud, P, V, tetta, R, L = 230, 0, random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
+    #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
     initial['mass'] = mass
@@ -492,7 +481,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
         local_PX.append(Px)
 
 
-    print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
+    #print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
     mass_consumption = chromosome['mass_consumption']
     p_soplar = pressure_func(h_vcl - ((h_vcl - h_stop)/2))
     S_soplar = (mass_consumption * 1550 * 1.8) / 2.533e+7
@@ -538,7 +527,7 @@ def compute_trajectory(equations, dx, pipe_conn, chromosome):
             h_stop = (R - Rb)
             break
 
-    print(f' с движком V = {V:.3f}, P = {np.max(local_P)}, давление на срезе сопла = {p_soplar:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
+    #print(f' с движком V = {V:.3f}, P = {np.max(local_P)}, давление на срезе сопла = {p_soplar:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
     v_gas = 0
     p_soplar = 0
@@ -830,12 +819,32 @@ def genetic_algorithm():
         best_mass
     )
 
+def view_all_results():
+    conn = sqlite3.connect('results.db')
+    cursor = conn.cursor()
 
+    cursor.execute('SELECT * FROM optimization_results')
+    rows = cursor.fetchall()
+
+    # Заголовки столбцов:
+    column_names = [
+        'id', 'best_last_V', 'best_last_P', 'best_p_soplar', 'best_tetta',
+        'best_L', 'best_H', 'best_t', 'best_mass', 'best_chromosome',
+        'population_size', 'generations', 'mutation_rate', 'elapsed_time', 'timestamp', 'PARAM_BOUNDS'
+    ]
+
+    for row in rows:
+        print("=== Результат ===")
+        for col_name, value in zip(column_names, row):
+            print(f"{col_name}: {value}")
+        print()
+
+    conn.close()
 
 # Запуск генетического алгоритма
 if __name__ == '__main__':
     POPULATION_SIZE = 30
-    GENERATIONS = 50
+    GENERATIONS = 10
     MUTATION_RATE = 0.8
 
     (
@@ -862,6 +871,9 @@ if __name__ == '__main__':
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(elapsed_time)
-
+    #сохранение в бд
+    save_results_to_db((best_last_V, best_last_P, best_p_soplar, best_tetta, best_L, best_H, best_t, best_mass,
+        str(best_chromosome), POPULATION_SIZE, GENERATIONS, MUTATION_RATE, elapsed_time, str(PARAM_BOUNDS)))
+    view_all_results()
 
 
