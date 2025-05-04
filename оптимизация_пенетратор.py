@@ -844,7 +844,7 @@ def view_all_results():
 # Запуск генетического алгоритма
 if __name__ == '__main__':
     POPULATION_SIZE = 30
-    GENERATIONS = 10
+    GENERATIONS = 40
     MUTATION_RATE = 0.8
 
     (
@@ -875,5 +875,3 @@ if __name__ == '__main__':
     save_results_to_db((best_last_V, best_last_P, best_p_soplar, best_tetta, best_L, best_H, best_t, best_mass,
         str(best_chromosome), POPULATION_SIZE, GENERATIONS, MUTATION_RATE, elapsed_time, str(PARAM_BOUNDS)))
     view_all_results()
-
-

@@ -309,7 +309,7 @@ for i in range(8):
         Cxa = Cx(V, V_sound)
         Px = mass / Cxa * S
         #V, tetta, R, L = runge_kutta_4(Cn, Fn, L, Px, ro, V, tetta, R, dt)
-        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]

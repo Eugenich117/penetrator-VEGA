@@ -1,4 +1,6 @@
 import sqlite3
+import math as m
+import numpy as np
 def view_all_results():
     conn = sqlite3.connect('results.db')
     cursor = conn.cursor()
@@ -20,5 +22,5 @@ def view_all_results():
         print()
 
     conn.close()
-
 view_all_results()
+

@@ -295,7 +295,7 @@ def runge_kutta_4(equations, initial, dt, dx):
         derivatives_4[key] = initial[key] + derivative * dt
         new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
     return new_values
-tetta = -0.051  # * (m.pi / 180)
+tetta = -0.034  # * (m.pi / 180)
 V = 7600  # Используем тип данняых float64
 qk = 0
 initial = {}
@@ -310,10 +310,10 @@ while R >= Rb:
     Cxa = 0.7 #Cx(V, V_sound)
     Px = mass / Cxa * S
     xd = 0.06
-    Cya = 0.025 #0
-    K = 0.3 #0
-    gamma = 0.018
-    alfa = (gamma/xd) * (Cxa/(Cya + Cxa)) #0
+    Cya = 0.025 # для баллистического сделать 0
+    K = 0.15 # для баллистического сделать 0
+    gamma = 0.009 # для баллистического сделать 0
+    alfa = (gamma/xd) * (Cxa/(Cya + Cxa)) # для баллистического сделать 0
     Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
     Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
     initial.update({'qk': qk, 'tetta': tetta, 'Cya': Cya, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R})
@@ -347,7 +347,30 @@ for i in range(1, len(V_MOD)):
     derivative_value = (V_MOD[i] - V_MOD[i - 1]) / dt
     acceleration.append(derivative_value)
 
-plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+def beautified_plot(x, y, title, xlabel, ylabel, color='tab:red', linestyle='-', linewidth=2):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    fig.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    ax.plot(x, y, color=color, linestyle=linestyle, linewidth=linewidth)
+    ax.set_title(title, fontsize=14, weight='bold')
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.tick_params(axis='both', labelsize=10)
+    plt.show()
+
+# Построение графиков
+beautified_plot(X, Y, 'Траектория', 'Дальность, м', 'Высота, м')
+beautified_plot(T, Y, 'Зависимость высоты от времени', 'Время, с', 'Высота, м')
+beautified_plot(T, V_MOD, 'Зависимость модуля скорости от времени', 'Время, с', 'Модуль скорости, м/с')
+beautified_plot(T, TETTA, 'Зависимость угла входа от времени', 'Время, с', 'TETTA, град')
+beautified_plot(T, napor, 'Зависимость скоростного напора от времени', 'Время, с', 'Скоростной напор, Па')
+beautified_plot(T, nx, 'Зависимость продольной перегрузки от времени', 'Время, с', 'Перегрузка, g')
+beautified_plot(T, ny, 'Зависимость поперечной перегрузки от времени', 'Время, с', 'Перегрузка, g')
+beautified_plot(T, PX, 'Зависимость давления на мидель от времени', 'Время, с', 'Px, кг/м²')
+beautified_plot(T, Qk, 'Зависимость плотности конвективного теплового потока от времени', 'Время, с', 'Q, кВт/м²')
+beautified_plot(T, Quantitiy_warm, 'Зависимость полного количества тепла от времени', 'Время, с', 'Q, кДж/м²')
+beautified_plot(T, Tomega, 'Зависимость равновесной температуры от времени', 'Время, с', 'T, K')
+'''plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
 plt.plot(X, Y)
 plt.title('Траектория')
 plt.xlabel('Дальность, м')
@@ -355,12 +378,12 @@ plt.ylabel('Высота, м')
 plt.grid(True)
 plt.show()
 
-'''plt.plot(T, Y)
+plt.plot(T, Y)
 plt.title('Зависимость высоты от времени')
 plt.xlabel('Время, с')
 plt.ylabel('Высота, м')
 plt.grid(True)
-plt.show()'''
+plt.show()
 
 plt.plot(T, V_MOD)
 plt.title('Зависимость модуля скорости от времени')
@@ -368,13 +391,6 @@ plt.xlabel("Время, c")
 plt.ylabel('Модуль скорости, м/с')
 plt.grid(True)
 plt.show()
-
-'''plt.plot(Y, V_MOD)
-plt.title('Зависимость модуля скорости от высоты')
-plt.xlabel("Модуль скорости, м/с")
-plt.ylabel('Высота, м')
-plt.grid(True)
-plt.show()'''
 
 plt.plot(T, TETTA)
 plt.title('Зависимость угла входа от времени')
@@ -389,14 +405,6 @@ plt.xlabel('Время, с')
 plt.ylabel('Скоростной напор, Па')
 plt.grid(True)
 plt.show()
-
-'''T.pop()
-plt.plot(T, acceleration)
-plt.title('Зависимость ускорения от времени')
-plt.xlabel('Время, с')
-plt.ylabel('Ускорение м/с^2')
-plt.grid(True)
-plt.show()'''
 
 plt.plot(T, nx)
 plt.title('Зависимость продольной перегрузки от времени')
@@ -438,7 +446,7 @@ plt.title('Зависимость равновесной температуры 
 plt.xlabel('Время, с')
 plt.ylabel('T, K')
 plt.grid(True)
-plt.show()
+plt.show()'''
 #ic(len(acceleration), len(napor), len(X), len(Y), len(T), len(Qk), len(nx), len(ny), len(V_MOD), len(Quantitiy_warm), len(Tomega))
 data = {
     "acceleration": acceleration,

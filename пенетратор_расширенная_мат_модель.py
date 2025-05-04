@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import traceback
 from scipy.special import sindg, cosdg
 import math as m
 import matplotlib.pyplot as plt
@@ -13,6 +14,8 @@ import random
 import bisect
 import sqlite3
 import pandas as pd
+from mpl_toolkits.mplot3d import Axes3D  # нужно для 3D графика
+
 # мат модель из книжки воронцова упрощенная
 
 
@@ -181,7 +184,9 @@ def v_sound(R):
 
 
 start_time = time.time()
-r1 = 0.4
+r1 = 0.2
+r2 = 0.8
+long = 1.63
 mass = 120
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
@@ -210,50 +215,225 @@ def sign(x):
         return 0
 
 def dV_func(initial):
-    S=initial['S']
-    R=initial['R']
-    Cxa=initial['Cxa']
-    ro=initial['ro']
-    V=initial['V']
-    tetta=initial['tetta']
-    mass=initial['mass']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
-    Cxa_wind=initial['Cxa_wind']
-    V_wind_x=V_wind*m.sin(wind_angle)#Вдольтраектории
-    #dV=((-1/(2*Px))*Cxa*ro*V**2-((gravy_const*mass_planet)/R**2)*scipy.special.sindg(tetta))*dt#ОСНОВНАЯМОДЕЛЬКОСЕНКОВОЙ
-    dV=(-mass*(g*Rb**2/R**2)*m.sin(tetta)-(0.5*ro*V**2*Cxa*S)+sign(V_wind_x)*(0.5*ro*V_wind_x**2*Cxa_wind*S))/mass
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    tetta = initial['tetta']
+
+    dV = -1 / (2 * Px) * ro * V ** 2 - (g * Rb ** 2 / R ** 2) * m.sin(tetta)
     return dV, 'V'
 
-def dL_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
-
-    V_wind_z=V_wind*m.cos(wind_angle)#Перпендикулярнотраектории
-    dL=m.sqrt(V**2+V_wind_z**2)*Rb/R*m.cos(tetta)
-    return dL, 'L'
 
 def dtetta_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    R=initial['R']
-    V_wind=initial['V_wind']
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    K = initial['K']
+    gamma = initial['gamma']
+    R = initial['R']
+    tetta = initial['tetta']
 
-    dtetta=((-(g*Rb**2/R**2)*m.cos(tetta))/m.sqrt(V**2+V_wind**2)+(m.sqrt(V**2+V_wind**2)/R))
-    #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
+    dtetta = (1 / (2 * Px)) * ro * V * K * m.cos(gamma) + ((V ** 2 - (g * Rb ** 2 / R ** 2) * R) / (V * R)) * m.cos(tetta)
     return dtetta, 'tetta'
 
-def dR_func(initial):
-    V=initial['V']
-    tetta=initial['tetta']
-    V_wind=initial['V_wind']
-    wind_angle=initial['wind_angle']
 
-    V_wind=V_wind*m.cos(wind_angle)#Вдольтраектории
-    dR=(m.sqrt(V**2+V_wind**2)*m.sin(tetta))
+def deps_func(initial):
+    Px = initial['Px']
+    ro = initial['ro']
+    V = initial['V']
+    K = initial['K']
+    gamma = initial['gamma']
+    tetta = initial['tetta']
+    eps = initial['eps']
+    phi = initial['phi']
+    R = initial['R']
+
+    deps = (1 / (2 * Px)) * ro * V * (V * K * m.sin(gamma) / m.cos(tetta)) - V / R * m.cos(tetta) * m.tan(phi) * m.cos(eps)
+    return deps, 'eps'
+
+
+def dphi_func(initial):
+    V = initial['V']
+    R = initial['R']
+    tetta = initial['tetta']
+    eps = initial['eps']
+
+    dphi = V / R * m.cos(tetta) * m.sin(eps)
+    return dphi, 'phi'
+
+
+def dlam_func(initial):
+    """
+    Изменение долготы
+    initial['V'] - скорость [м/с]
+    initial['theta'] - угол наклона [рад]
+    initial['eps'] - угол курса [рад]
+    initial['phi'] - широта [рад]
+    initial['H'] - высота [м]
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+    eps = initial['eps']
+    phi = initial['phi']
+    R = initial['R']
+
+    dlam = V * m.cos(tetta) * m.cos(eps) / (R * m.cos(phi)) + initial['omega']
+    return dlam, 'lam'
+
+
+def dR_func(initial):
+    V = initial['V']
+    tetta = initial['tetta']
+
+    dR = V * m.sin(tetta)
     return dR, 'R'
+'''def dV_func(initial):
+    """
+    Изменение скорости аппарата
+    initial['ro'] - плотность атмосферы [кг/м³]
+    initial['V'] - скорость аппарата [м/с]
+    initial['theta'] - угол наклона траектории [рад]
+    initial['phi'] - широта [рад]
+    initial['eps'] - угол курса [рад]
+    initial['H'] - высота [м]
+    initial['mass'] - масса аппарата [кг]
+    initial['S'] - площадь миделя [м²]
+    initial['Cx0'] - коэффициент лобового сопротивления при α=0
+    initial['Cx_alpha'] - производная коэффициента сопротивления по углу атаки
+    initial['alpha'] - угол атаки [рад]
+    """
+    # Параметры из initial
+    ro = initial['ro']  # Плотность атмосферы [кг/м³]
+    V = initial['V']
+    tetta = initial['tetta']
+    phi = initial['phi']
+    eps = initial['eps']
+    mass = initial['mass']
+    S = initial['S']
+    Cxa = initial['Cxa']
+    alfa = initial['alfa']
+    R = initial['R']
+
+    g = 8.869 * Rb ** 2 / R ** 2  # Гравитация на текущей высоте
+
+    # Аэродинамическая сила сопротивления
+    Xa = 0.5 * ro * V ** 2 * S * (Cxa * alfa ** 2)  # [Н]
+
+    # Центробежный член от вращения планеты
+    centrifugal = initial['omega'] ** 2 * R * m.cos(phi) * (m.sin(tetta) * m.cos(phi) - m.cos(tetta) * m.sin(phi) * m.sin(eps))
+
+    dV = -g * m.sin(tetta) - Xa / mass + centrifugal
+    return dV, 'V'
+
+
+def dtetta_func(initial):
+    """
+    Изменение угла наклона траектории
+    initial['ro'] - плотность атмосферы [кг/м³]
+    initial['V'] - скорость [м/с]
+    initial['theta'] - текущий угол наклона [рад]
+    initial['phi'] - широта [рад]
+    initial['eps'] - угол курса [рад]
+    initial['H'] - высота [м]
+    initial['mass'] - масса [кг]
+    initial['S'] - площадь миделя [м²]
+    initial['Cy_alpha'] - производная подъемной силы по углу атаки
+    initial['alpha'] - угол атаки [рад]
+    """
+    # Параметры из initial
+    ro = initial['ro']
+    V = initial['V']
+    tetta = initial['tetta']
+    phi = initial['phi']
+    eps = initial['eps']
+    mass = initial['mass']
+    S = initial['S']
+    Cya = initial['Cya']
+    alfa = initial['alfa']
+    R = initial['R']
+
+    g = 8.869 * Rb ** 2 / R ** 2
+
+    # Подъемная сила
+    Ya = 0.5 * ro * V ** 2 * S * Cya * alfa  # [Н]
+
+    # Центробежный член
+    centrifugal = initial['omega'] ** 2 * R * m.cos(phi) * (m.cos(tetta) * m.cos(phi) + m.sin(tetta) * m.sin(phi) * m.sin(eps))
+    dtetta = (-g * m.cos(tetta) / V + Ya / (mass * V) + centrifugal / V)
+    return dtetta, 'tetta'
+
+
+def deps_func(initial):
+    """
+    Изменение угла курса
+    initial['ro'] - плотность атмосферы [кг/м³]
+    initial['V'] - скорость [м/с]
+    initial['theta'] - угол наклона [рад]
+    initial['phi'] - широта [рад]
+    initial['eps'] - текущий угол курса [рад]
+    initial['H'] - высота [м]
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+    phi = initial['phi']
+    eps = initial['eps']
+    R = initial['R']
+
+    # Члены уравнения
+    rotation_term = initial['omega'] ** 2 * R * m.sin(phi) * m.cos(phi) * m.cos(eps) / (V * m.cos(tetta))
+    curvature_term = -V * m.cos(tetta) * m.tan(phi) * m.sin(eps) / R
+
+    deps = rotation_term + curvature_term
+    return deps, 'eps'
+
+
+def dphi_func(initial):
+    """
+    Изменение широты
+    initial['V'] - скорость [м/с]
+    initial['theta'] - угол наклона [рад]
+    initial['eps'] - угол курса [рад]
+    initial['H'] - высота [м]
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+    eps = initial['eps']
+    R = initial['R']
+
+    dphi = V * m.cos(tetta) * m.sin(eps) / R
+    return dphi, 'phi'
+
+
+def dlam_func(initial):
+    """
+    Изменение долготы
+    initial['V'] - скорость [м/с]
+    initial['theta'] - угол наклона [рад]
+    initial['eps'] - угол курса [рад]
+    initial['phi'] - широта [рад]
+    initial['H'] - высота [м]
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+    eps = initial['eps']
+    phi = initial['phi']
+    R = initial['R']
+
+    dlam = V * m.cos(tetta) * m.cos(eps) / (R * m.cos(phi)) + initial['omega']
+    return dlam, 'lam'
+
+
+def dR_func(initial):
+    """
+    Изменение высоты
+    initial['V'] - скорость [м/с]
+    initial['theta'] - угол наклона [рад]
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+    dR = V * m.sin(tetta)
+    return dR, 'R'
+    '''
 
 
 def wind(h, t, next_update_time, V_wind, wind_angle):
@@ -291,173 +471,232 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
 
 
 def runge_kutta_4(equations, initial, dt, dx):
-    '''equations - это список названий функций с уравнениями для системы
-    initial это переменные с начальными условиями
-    dx - это список переменных, которые будут использованы для интегрирования уравнения'''
-    k1 = {key: 0 for key in initial.keys()}
-    k2 = {key: 0 for key in initial.keys()}
-    k3 = {key: 0 for key in initial.keys()}
-    k4 = {key: 0 for key in initial.keys()}
+    k1 = {key: 0 for key in dx}
+    k2 = {key: 0 for key in dx}
+    k3 = {key: 0 for key in dx}
+    k4 = {key: 0 for key in dx}
 
-    derivatives_1 = {key: initial[key] for key in initial}
-    derivatives_2 = {key: initial[key] for key in initial}
-    derivatives_3 = {key: initial[key] for key in initial}
-    derivatives_4 = {key: initial[key] for key in initial}
-
-    new_values = [0] * len(equations)
-
-    for i, eq in enumerate(equations):
+    # k1
+    for eq in equations:
         derivative, key = eq(initial)
-        k1[key] += derivative
-        derivatives_1[key] = initial[key] + derivative * dt / 2
-        derivatives_1[dx[i]] += dt / 2
-        # derivatives_1 = {key: value / 2 for key, value in derivatives_1.items()}
+        if key in dx:
+            k1[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_1)
-        k2[key] += derivative
-        derivatives_2[key] = initial[key] + derivative * dt / 2
-        derivatives_2[dx[i]] += dt / 2
-        # derivatives_2 = {key: value / 2 for key, value in derivatives_2.items()}
+    # k2
+    state_k2 = initial.copy()
+    for key in dx:
+        state_k2[key] += dt / 2 * k1[key]
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_2)
-        k3[key] += derivative
-        derivatives_3[key] = initial[key] + derivative * dt
-        derivatives_3[dx[i]] += dt
+    for eq in equations:
+        derivative, key = eq(state_k2)
+        if key in dx:
+            k2[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_3)
-        k4[key] += derivative
-        derivatives_4[key] = initial[key] + derivative * dt
-        new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
+    # k3
+    state_k3 = initial.copy()
+    for key in dx:
+        state_k3[key] += dt / 2 * k2[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k3)
+        if key in dx:
+            k3[key] = derivative
+
+    # k4
+    state_k4 = initial.copy()
+    for key in dx:
+        state_k4[key] += dt * k3[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k4)
+        if key in dx:
+            k4[key] = derivative
+
+    # итоговое обновление только для переменных из dx
+    new_values = []
+    for key in dx:
+        new_val = initial[key] + (dt / 6) * (
+                k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key]
+        )
+        new_values.append(new_val)
+
     return new_values
-
-
-def save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-               local_acceleration):
-    conn = sqlite3.connect("trajectories.db")
-    cursor = conn.cursor()
-
-    # Создаем таблицу, если она не существует
-    cursor.execute('''CREATE TABLE IF NOT EXISTS trajectory_data (
-                        iter INTEGER, time REAL, tetta REAL, x REAL, y REAL, v_mod REAL, 
-                        napor REAL, nx REAL, px REAL, acceleration REAL)''')
-
-    # Подготавливаем данные для вставки
-    data = list(zip(
-        [i] * len(local_T),
-        local_T,
-        local_TETTA,
-        local_X,
-        local_Y,
-        local_V_MOD,
-        local_napor,
-        local_nx,
-        local_PX,
-        local_acceleration
-    ))
-
-    # Вставляем данные
-    cursor.executemany("INSERT INTO trajectory_data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
-    #print('sucsess')
-    conn.commit()
-    conn.close()
 
 
 #(i, napor, TETTA, X, Y, V_MOD, T, PX, nx, acceleration) # передача листов для результатов в явном виде в функцию
 def compute_trajectory(i, equations, dx, pipe_conn):
-    #print(f"поток {i} запущен")
-    t = 0
-    d = 0.8
-    S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
-    initial = {}
-    initial['S'] = S
-    initial['mass'] = mass
+    try:
+        #print(f"поток {i} запущен")
+        location = 'init'  # Для отслеживания этапа выполнения
+        t = 0
+        d = 0.8
+        S = (m.pi * d ** 2) / 4
+        V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
+        initial = {'S': S, 'mass': mass}
 
-    local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
-    local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
-    lam, phi, epsilon = 0, 0, 0
-    next_update_time = -1
-    V_wind = 0
-    wind_angle = 0
-    while R >= Rb:
-        V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
-        omega_b = 2.9926 * 10 ** -7  # Угловаяскоростьвращенияпланеты,рад/с
-        V_sound = v_sound(R - Rb)
-        ro = Get_ro(R - Rb)
-        Cxa = Cx(V, V_sound)
-        Cxa_wind = Cx_wind(V, V_sound)
-        Px = mass / Cxa * S
-        '''Cya=0.5
-        K=Cya/Cxa'''
+        local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
+        local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []; local_eps = []
+        local_phi = []; local_lam = []
+        Qk, lam, phi, eps = m.pi / 2, 0, 0, 0
+        next_update_time = -1
+        V_wind = 0
+        wind_angle = 0
+        while R >= Rb + 55_000:
+            V_wind, wind_angle, next_update_time = 0, 0, 0 # wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            omega = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
+            '''if R > Rb + h:
+                V_sound = 1
+                ro = 1
+                Cxa = 1
+                Cxa_wind = 1
+            else:'''
+            location = 'v_sound'
+            V_sound = v_sound(R - Rb)
+            location = 'ro'
+            ro = Get_ro(R - Rb)
+            location = 'Cxa'
+            Cxa = Cx(V, V_sound)
+            location = 'Cx_wind'
+            Cxa_wind = Cx_wind(V, V_sound)
 
-        initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind, 'omega_b': omega_b,
-          'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
-        values = runge_kutta_4(equations, initial, dt, dx)
-        V = values[0]
-        L = values[1]
-        tetta = values[2]
-        R = values[3]
-        t += dt
+            Px = mass / Cxa * S
+            Cya = 0.00156 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
+            xd = 0.06
+            gamma = 0.009
+            alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # 0
+            Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
+            Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
+            K = Cya / Cxa  # 0
 
-        local_wind_angle.append(wind_angle)
-        local_v_wind.append(V_wind)
-        local_TETTA.append(tetta * cToDeg)
-        local_X.append(L)
-        local_Y.append(R - Rb)
-        local_V_MOD.append(V)
-        local_T.append(t)
-        local_napor.append(0.5 * ro * V ** 2)
-        local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
-        local_PX.append(Px)
-        #save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
-        #print("sucsess")
+            initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'eps': eps, 'V_wind': V_wind, 'omega': omega, 'Cya': Cya,
+              'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V,
+               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K})
+            location = 'equations'
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            tetta = values[1]
+            eps = values[2]
+            phi = values[3]
+            lam = values[4]
+            R = values[5]
+            t += dt
 
-    #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
+            local_eps.append(eps)
+            local_phi.append(phi)
+            local_lam.append(lam)
+            local_wind_angle.append(wind_angle)
+            local_v_wind.append(V_wind)
+            local_TETTA.append(tetta * cToDeg)
+            #local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
 
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
-    for j in range(1, len(local_V_MOD)):
-        derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
-        local_acceleration.append(derivative_value)
-    result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-              local_acceleration, local_v_wind, local_wind_angle)
-    pipe_conn.send(result)  # Передаем данные
-    pipe_conn.close()  # Закрываем трубу
-    #queue.put(result, block=False)
+        while R >= Rb:
+            V_wind, wind_angle, next_update_time =0, 0, 0 # wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            omega = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
+            '''if R > Rb + h:
+                V_sound = 1
+                ro = 1
+                Cxa = 1
+                Cxa_wind = 1
+            else:'''
+            location = 'v_sound'
+            V_sound = v_sound(R - Rb)
+            location = 'ro'
+            ro = Get_ro(R - Rb)
+            location = 'Cxa'
+            Cxa = Cx(V, V_sound)
+            location = 'Cx_wind'
+            Cxa_wind = Cx_wind(V, V_sound)
 
+            Px = mass / Cxa * S
+            Cya = 0.00006 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
+            xd = 0.06
+            gamma = 0.001
+            alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # 0
+            Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
+            Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
+            K = Cya / Cxa  # 0
+
+            initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'eps': eps, 'V_wind': V_wind, 'omega': omega, 'Cya': Cya,
+              'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V,
+               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K})
+            location = 'equations'
+            values = runge_kutta_4(equations, initial, dt, dx)
+            V = values[0]
+            tetta = values[1]
+            eps = values[2]
+            phi = values[3]
+            lam = values[4]
+            R = values[5]
+            t += dt
+
+            local_eps.append(eps)
+            local_phi.append(phi)
+            local_lam.append(lam)
+            local_wind_angle.append(wind_angle)
+            local_v_wind.append(V_wind)
+            local_TETTA.append(tetta * cToDeg)
+            #local_X.append(L)
+            local_Y.append(R - Rb)
+            local_V_MOD.append(V)
+            local_T.append(t)
+            local_napor.append(0.5 * ro * V ** 2)
+            local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
+            local_PX.append(Px)
+            #save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration)
+            #print("sucsess")
+
+
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+
+        location = 'compute_acceleration'
+        for j in range(1, len(local_V_MOD)):
+            derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
+            local_acceleration.append(derivative_value)
+        location = 'pack_result'
+        result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+                  local_acceleration, local_v_wind, local_wind_angle, local_eps, local_phi, local_lam)
+        try:
+            pipe_conn.send(result)
+        except (BrokenPipeError, EOFError):
+            error_info = traceback.format_exc()
+            if not pipe_conn.closed:
+                pipe_conn.send(('error', (location, i, error_info)))
+                print(f"[ОШИБКА] Процесс {i} на этапе {location}:\n{error_info}")
+                print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
+
+
+    except Exception as e:
+        try:
+            # Передаем не только ошибку, но и место (location)
+            if not pipe_conn.closed:
+                pipe_conn.send(('error', (location, i, str(e))))
+                print(f"[ОШИБКА] Процесс {i} на этапе {location}: {e}")
+                print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+
+        except Exception as e2:
+            print(f"[ОШИБКА ПРИ ОТПРАВКЕ ОШИБКИ] Процесс {i}: {e2}")
+            print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+
+
+    finally:
+        pipe_conn.close()
+        gc.collect()
 
 
 if __name__ == '__main__':
-    iter = 30 #количество итераций
-    dx = ['V', 'L', 'tetta', 'R']
-    equations = [dV_func, dL_func, dtetta_func, dR_func]
-    #with multiprocessing.Manager() as manager:
+    iter = 10 #количество итераций
+    dx = ['V', 'tetta', 'eps', 'phi', 'lam', 'R']
+    equations = [dV_func, dtetta_func, deps_func, dphi_func, dlam_func, dR_func]
 
-        # Создаем списки через менеджера
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list([[] for _ in range(5)])
-    napor = manager.list([manager.list() for _ in range(5)])
-    TETTA = manager.list([manager.list() for _ in range(5)])
-    X = manager.list([manager.list() for _ in range(5)])
-    Y = manager.list([manager.list() for _ in range(5)])
-    T = manager.list([manager.list() for _ in range(5)])
-    PX = manager.list([manager.list() for _ in range(5)])
-    nx = manager.list([manager.list() for _ in range(5)])
-    V_MOD = manager.list([manager.list() for _ in range(5)])'''
-    '''manager = multiprocessing.Manager()
-    acceleration = manager.list()
-    napor = manager.list()
-    TETTA = manager.list()
-    X = manager.list()
-    Y = manager.list()
-    T = manager.list()
-    PX = manager.list()
-    nx = manager.list()
-    V_MOD = manager.list()'''
     acceleration = ([[] for _ in range(iter)])
     napor = ([[] for _ in range(iter)])
     TETTA = ([[] for _ in range(iter)])
@@ -469,6 +708,9 @@ if __name__ == '__main__':
     V_MOD = ([[] for _ in range(iter)])
     V_WIND = ([[] for _ in range(iter)])
     WIND_ANGLE = ([[] for _ in range(iter)])
+    EPS = ([[] for _ in range(iter)])
+    PHI = ([[] for _ in range(iter)])
+    LAM = ([[] for _ in range(iter)])
     processes = []
     parent_conns = []
     child_conns = []
@@ -481,47 +723,71 @@ if __name__ == '__main__':
         child_conns.append(child_conn)
         tasks.append((i, equations, dx, child_conn))  # Формируем задачи для передачи в пул
 
-
     # Функция обратного вызова, которая будет вызываться по завершении каждой задачи
-
     # Создаем пул процессов
     pool = multiprocessing.Pool(processes=30)
 
     # Запускаем задачи асинхронно с отслеживанием завершения
-    for task in tasks:
-        pool.apply_async(compute_trajectory, task)
+    try:
+        # Запуск задач
+        for task in tasks:
+            pool.apply_async(compute_trajectory, task)
 
-    '''for i in range(iter):
-        parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
-        parent_conns.append(parent_conn)
-        child_conns.append(child_conn)
-        p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
-        p.start()
-        processes.append(p)'''
+        pool.close()  # Больше задач не будет
 
-    '''results = []
-    while not queue.empty():
-        results.append(queue.get())'''
+        # Теперь безопасно читаем результаты
+        for i in range(iter):
+            try:
+                if parent_conns[i].poll(200):  # Ждем максимум 60 секунд
+                    result = parent_conns[i].recv()
+                    (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
+                     local_acceleration, local_v_wind, local_wind_angle, local_eps, local_phi, local_lam) = result
 
-    # Обработка результатов
+                    TETTA[i] = local_TETTA
+                    X[i] = local_X
+                    Y[i] = local_Y
+                    V_MOD[i] = local_V_MOD
+                    T[i] = local_T
+                    napor[i] = local_napor
+                    nx[i] = local_nx
+                    PX[i] = local_PX
+                    acceleration[i] = local_acceleration
+                    WIND_ANGLE[i] = local_wind_angle
+                    V_WIND[i] = local_v_wind
+                    EPS[i] = local_eps
+                    PHI[i] = local_phi
+                    LAM[i] = local_lam
+                else:
+                    raise TimeoutError(f'Процесс {i} не прислал данные за отведённое время.')
+
+            except Exception as e:
+                print(f"[ОШИБКА] При получении данных от процесса {i}: {e}")
+
+    except Exception as e:
+        print(f"[КРИТИЧЕСКАЯ ОШИБКА] {e}")
+
+    finally:
+        pool.terminate()  # На всякий случай убиваем все процессы
+        pool.join()  # Ждем завершения
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
     for i in range(iter):
-        result = parent_conns[i].recv()
-        (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-             local_acceleration, local_v_wind, local_wind_angle) = result
-        TETTA[i] = local_TETTA
-        X[i] = local_X
-        Y[i] = local_Y
-        V_MOD[i] = local_V_MOD
-        T[i] = local_T
-        napor[i] = local_napor
-        nx[i] = local_nx
-        PX[i] = local_PX
-        acceleration[i] = local_acceleration
-        WIND_ANGLE[i] = local_wind_angle
-        V_WIND[i] = local_v_wind
+        ax.plot(PHI[i], EPS[i],  Y[i], label=f'Вариант {i+1}')
+
+    ax.set_title('Траектории спуска зонда-пенетратора (3D)', fontsize=14, fontname='Times New Roman')
+    ax.set_xlabel('PHI (широта/долгота), рад', fontsize=12, fontname='Times New Roman')
+    ax.set_ylabel('EPS (курс), рад', fontsize=12, fontname='Times New Roman')
+    ax.set_zlabel('Высота, м', fontsize=12, fontname='Times New Roman')
+    ax.grid(True)
+    # ax.legend()  # при необходимости
+
+    plt.tight_layout()
+    plt.show()
 
     for i in range(iter):
-        plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
+        plt.plot(PHI[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
@@ -615,7 +881,6 @@ if __name__ == '__main__':
     plt.show()
 
     for i in range(iter):
-        ic(len(WIND_ANGLE[i]), len(V_WIND[i]), len(T[i]))
         V_WIND[i].pop()
         plt.plot(T[i], V_WIND[i], label=f'Вариант {i + 1}')
     plt.title('Скорость ветра от времени', fontsize=16, fontname='Times New Roman')

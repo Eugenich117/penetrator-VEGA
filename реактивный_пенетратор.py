@@ -429,7 +429,8 @@ def save_to_db(i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_nap
 def compute_trajectory(i, equations, dx, pipe_conn):
     #print(f"поток {i} запущен")
     t = 0
-    mass = 180
+    mass = 400
+    mass_stop = 220
     d = 0.8
     S = (m.pi * d ** 2) / 4
     I_ud, P, V, tetta, R, L = 230, 0, random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
@@ -451,7 +452,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     mass_consumption = 0
     S_soplar = 0
     qk = 0
-    while R >= Rb + 50_000:
+    while R >= Rb + 856:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
@@ -491,12 +492,13 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
     print(f' без движка V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
-    v_gas = 2453
+
     #p_soplar = 101_000
-    mass_consumption = 0.8
-    S_soplar = 0.0266
-    p_soplar = pressure_func(50_000 - ((50_000 - 48_000) / 2))
-    while R >= Rb + 48_000:
+
+    mass_consumption = 5.88
+    p_soplar = pressure_func(556 - ((556 - 15) / 2))
+    S_soplar = (mass_consumption * 1550 * 1.8) / 2.533e+7
+    while R >= Rb + 2:
         pressure = pressure_func(R - Rb)
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
@@ -504,6 +506,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         Cxa = Cx(V, V_sound)
         Cxa_wind = Cx_wind(V, V_sound)
         Px = mass / Cxa * S
+        v_gas = m.sqrt(2 * 2000 * 3500 * (1 - (pressure / 2.533e+7) ** (0.2 / 1.2)))
         initial.update({'Px': Px, 'I_ud': I_ud, 'P': P, 'lam': lam, 'phi': phi, 'epsilon': epsilon, 'V_wind': V_wind,
             'omega_b': omega_b, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro,
             'mass': mass, 'L': L, 'V': V, 'R': R, 'pressure': pressure, 'v_gas': v_gas, 'p_soplar': p_soplar, 'qk': qk,
@@ -516,8 +519,6 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         qk = values[4]
         mass -= mass_consumption * dt
         P = v_gas * mass_consumption + S_soplar * (p_soplar - pressure)  # (P / ((g * Rb**2/R**2) * I_ud))
-        '''if P <= 0:
-            P = 0'''
         t += dt
         #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
@@ -536,6 +537,8 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
+        if (mass <= (mass_stop)) or (R <= Rb):
+            h_stop = (R - Rb)
     print(f' с движком V = {V:.3f}, P = {np.max(local_P)}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, mass = {mass:.3f}')
 
     v_gas = 0
@@ -627,7 +630,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 10 #количество итераций
+    iter = 30 #количество итераций
     dx = ['V', 'L', 'tetta', 'R', 'qk']
     equations = [dV_func, dL_func, dtetta_func, dR_func, qk_func]
 
@@ -667,7 +670,10 @@ if __name__ == '__main__':
 
     # Запускаем задачи асинхронно с отслеживанием завершения
     for task in tasks:
-        pool.apply_async(compute_trajectory, task)
+        try:
+            pool.apply_async(compute_trajectory, task)
+        except Exception as e:
+            print(f"Ошибка при запуске процесса для итерации {task[0]}: {str(e)}")
 
     # Обработка результатов
     for i in range(iter):
@@ -889,7 +895,7 @@ if __name__ == '__main__':
         "T": T,
         "PX": PX,
         "nx": nx,
-        "V_MOD": V_MOD,
+        "V_MOD": V_MOD[-1],
     }
 
     # Перебираем каждый массив и находим min и max
