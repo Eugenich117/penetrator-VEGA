@@ -285,7 +285,7 @@ def dV_func(initial):
     U = initial['U']
     Cn = initial['Cn']
     Fn = initial['Fn']
-    F = ro * (1 - (330/176)) * U * (g * Rb ** 2 / R ** 2)
+    F = ro * (1 - (430/176)) * U * (g * Rb ** 2 / R ** 2)
     #dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass #без аэростата
     '''dV = (((ro * g * U * m.sin(tetta)) - mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) -(0.5 * ro * V ** 2 *
         (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # нормальная модель с аэростатом'''
@@ -382,7 +382,7 @@ mass = 600
 t = 0
 d = 0.92
 S = (m.pi * d ** 2) / 4
-V, tetta, R, L = 47_000,  -9 * cToRad, Rb + h, 0
+V, tetta, R, L = 47_000,  -9.0 * cToRad, Rb + h, 0
 print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
 initial = {}
 Cn, Fn, U = 0, 0, 0
@@ -391,7 +391,7 @@ initial['mass'] = mass
 V_wind = 0
 wind_angle = 0
 next_update_time = -1
-while R >= Rb + 150_000:
+while R >= Rb + 15_000:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(mah)
@@ -419,7 +419,7 @@ while R >= Rb + 150_000:
 print(f'1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
 mass, Cn, Fn, U = 480, 0.35, 50, 0
-while R >= Rb + 120_000:
+while R >= Rb + 14_300:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(mah)
@@ -447,7 +447,7 @@ print(f'2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb)
 
 Cn, Fn, U = 0.65, 150, 0
 mass = 520
-while R >= Rb + 100_000:
+while R >= Rb + 13_000:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(mah)
@@ -474,7 +474,7 @@ while R >= Rb + 100_000:
 print(f'3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
 Cn, Fn, U = 0.85, 300, 0
-while R >= Rb + 80_000:
+while R >= Rb + 12_000:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(mah)
@@ -502,7 +502,7 @@ print(f'4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb)
 
 Cn, Fn, U = 0.9, 450, 0
 mass = 450
-while R >= Rb + 40_000:
+while R >= Rb:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(mah)
@@ -528,7 +528,7 @@ while R >= Rb + 40_000:
     PX.append(Px)
 print(f'5) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}')
 
-Cn, Fn, U = 1.1, 450, 40**3 * 0.55
+'''Cn, Fn, U = 1.1, 450, 40**3 * 0.55
 while t <= 1550:
     mah = M(R - Rb)
     ro = Get_ro(R - Rb)
@@ -553,7 +553,7 @@ while t <= 1550:
     napor.append(0.5 * ro * V ** 2)
     nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
     PX.append(Px)
-print(f'6) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, U = {U:.3f}')
+print(f'6) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, t = {t:.3f}, U = {U:.3f}')'''
 
 
 for i in range(1, len(V_MOD)):

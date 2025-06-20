@@ -128,12 +128,12 @@ def main():
     func.P = P
 
     # Численные методы оптимизации
-    methods = ['Nelder-Mead', 'Powell', 'BFGS']
+    methods = ['Nelder-Mead', 'Powell', 'COBYLA']
     results = {}
 
     for method in methods:
         # Используем lambda для корректной передачи func в градиент
-        if method == 'BFGS':
+        if method == 'COBYLA':
             res = minimize(objective, x0, args=(func,), method=method, jac=lambda x, f=func: f.gradient(x))
         else:
             res = minimize(objective, x0, args=(func,), method=method)
@@ -160,7 +160,7 @@ def main():
     all_x2 = [float(x[1]) for x, _ in results.values()] + [float(r[0][1]) for r in analytical_results.values() if r[0].shape[0] == 2]
 
     # Отладочный вывод для проверки содержимого списков
-'''    print("all_x1:", all_x1)
+    '''    print("all_x1:", all_x1)
     print("all_x2:", all_x2)
     print("Length of all_x1:", len(all_x1))
     print("Length of all_x2:", len(all_x2))'''
@@ -176,7 +176,7 @@ def main():
     print(f"x1_range: {x1_range}, x2_range: {x2_range}")
 
     # Добавляем отступ
-    padding = 0.2  # 20% от диапазона
+    padding = 0.5  # 20% от диапазона
     x1_min -= x1_range * padding
     x1_max += x1_range * padding
     x2_min -= x2_range * padding
@@ -188,7 +188,7 @@ def main():
     if x2_range < 1e-6:
         x2_min, x2_max = x2_min - 1, x2_max + 1
 
-    print(f"Final x1 range: [{x1_min}, {x1_max}], x2 range: [{x2_min}, {x2_max}]")
+    #print(f"Final x1 range: [{x1_min}, {x1_max}], x2 range: [{x2_min}, {x2_max}]")
 
     # Создаём сетку на основе новых границ
     x1 = np.linspace(x1_min, x1_max, 200)  # Увеличиваем количество точек для более плавных линий
@@ -198,8 +198,8 @@ def main():
     # Вычисляем Z с отладочным выводом
     Z = np.array([[func.evaluate_without_penalty(np.array([x1_val, x2_val])) for x1_val, x2_val in zip(row_x1, row_x2)]
                   for row_x1, row_x2 in zip(X1, X2)])
-    print("Z shape:", Z.shape)
-    print("Z min:", np.min(Z), "Z max:", np.max(Z))
+    #print("Z shape:", Z.shape)
+    #print("Z min:", np.min(Z), "Z max:", np.max(Z))
 
     # Настраиваем уровни контурных линий
     z_min, z_max = np.min(Z), np.max(Z)
@@ -233,6 +233,11 @@ def main():
     anal_y = [float(r[0][1]) for r in analytical_results.values() if r[0].shape[0] == 2]
     plt.scatter(anal_x, anal_y, c='g', label='Угловые точки', zorder=5)
 
+    # Добавляем оси координат через (0;0)
+    ax = plt.gca()  # Получаем текущие оси
+    ax.axhline(y=0, color='black', linestyle='-', linewidth=1)  # Горизонтальная ось
+    ax.axvline(x=0, color='black', linestyle='-', linewidth=1)  # Вертикальная ось
+
     plt.xlabel('x1')
     plt.ylabel('x2')
     plt.title('Контурная карта функции и минимумы')
@@ -242,3 +247,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

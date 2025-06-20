@@ -4,6 +4,7 @@ import traceback
 from scipy.special import sindg, cosdg
 import math as m
 import matplotlib.pyplot as plt
+import matplotlib
 from icecream import ic
 import scipy
 import concurrent.futures
@@ -219,8 +220,10 @@ def dV_func(initial):
     ro = initial['ro']
     V = initial['V']
     tetta = initial['tetta']
-
+    Cxa = initial['Cxa']
+    S = initial['S']
     dV = -1 / (2 * Px) * ro * V ** 2 - (g * Rb ** 2 / R ** 2) * m.sin(tetta)
+    #dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
     return dV, 'V'
 
 
@@ -232,8 +235,12 @@ def dtetta_func(initial):
     gamma = initial['gamma']
     R = initial['R']
     tetta = initial['tetta']
-
-    dtetta = (1 / (2 * Px)) * ro * V * K * m.cos(gamma) + ((V ** 2 - (g * Rb ** 2 / R ** 2) * R) / (V * R)) * m.cos(tetta)
+    V_wind = initial['V_wind']
+    Cya = initial['Cya']
+    S = initial['S']
+    #dtetta = (1 / (2 * Px)) * ro * V * K + ((V ** 2 - (g * Rb ** 2 / R ** 2) * R) / (V * R)) * m.cos(tetta)
+    dtetta=((-(g*Rb**2/R**2)*m.cos(tetta))/m.sqrt(V**2+V_wind**2)+(m.sqrt(V**2+V_wind**2)/R)) # пенетратор ВА
+    #dtetta = ((0.5 * ro * V ** 2 * Cya * S) / (mass * V)) - ((g * Rb ** 2 / R ** 2) / V) * m.cos(tetta) + ((V * m.cos(tetta) / R)) #  из теории полета
     return dtetta, 'tetta'
 
 
@@ -242,13 +249,12 @@ def deps_func(initial):
     ro = initial['ro']
     V = initial['V']
     K = initial['K']
-    gamma = initial['gamma']
     tetta = initial['tetta']
     eps = initial['eps']
     phi = initial['phi']
     R = initial['R']
 
-    deps = (1 / (2 * Px)) * ro * V * (V * K * m.sin(gamma) / m.cos(tetta)) - V / R * m.cos(tetta) * m.tan(phi) * m.cos(eps)
+    deps = - V / R * m.cos(tetta) * m.tan(phi) * m.cos(eps) # первое слагаемое в системе (1 / (2 * Px)) * ro * V * (V * K * m.sin(gamma) / m.cos(tetta))
     return deps, 'eps'
 
 
@@ -258,7 +264,7 @@ def dphi_func(initial):
     tetta = initial['tetta']
     eps = initial['eps']
 
-    dphi = V / R * m.cos(tetta) * m.sin(eps)
+    dphi = V / R * m.cos(tetta) * m.sin(eps) + initial['omega']
     return dphi, 'phi'
 
 
@@ -277,7 +283,7 @@ def dlam_func(initial):
     phi = initial['phi']
     R = initial['R']
 
-    dlam = V * m.cos(tetta) * m.cos(eps) / (R * m.cos(phi)) + initial['omega']
+    dlam = V * m.cos(tetta) * m.cos(eps) / (R * m.cos(phi))
     return dlam, 'lam'
 
 
@@ -464,9 +470,12 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
 
     if t >= next_update_time:
         V_wind = actions[index]()  # Генерируем новую скорость ветра
-        wind_angle = random.uniform(0, m.pi)  # Генерируем новый угол ветра
+        wind_angle = random.uniform(0, 2 * m.pi)  # Генерируем новый угол ветра
         wind_timer = random.uniform(0.2, 10)  # Случайный таймер
         next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+
+    if h >= 50_000:
+        wind_angle = random.uniform((-m.pi / 6), (m.pi / 6))
     return V_wind, wind_angle, next_update_time
 
 
@@ -542,15 +551,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         next_update_time = -1
         V_wind = 0
         wind_angle = 0
-        while R >= Rb + 55_000:
-            V_wind, wind_angle, next_update_time = 0, 0, 0 # wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+        while R >= Rb:
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
             omega = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
-            '''if R > Rb + h:
-                V_sound = 1
-                ro = 1
-                Cxa = 1
-                Cxa_wind = 1
-            else:'''
             location = 'v_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -563,7 +566,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Px = mass / Cxa * S
             Cya = 0.00156 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
             xd = 0.06
-            gamma = 0.009
+            gamma = wind_angle
             alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # 0
             Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
             Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
@@ -571,7 +574,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
             initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'eps': eps, 'V_wind': V_wind, 'omega': omega, 'Cya': Cya,
               'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V,
-               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K})
+               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K, 'S': S})
             location = 'equations'
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
@@ -598,15 +601,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
 
-        while R >= Rb:
-            V_wind, wind_angle, next_update_time =0, 0, 0 # wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+        '''while R >= Rb:
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
             omega = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
-            '''if R > Rb + h:
-                V_sound = 1
-                ro = 1
-                Cxa = 1
-                Cxa_wind = 1
-            else:'''
             location = 'v_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -619,7 +616,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Px = mass / Cxa * S
             Cya = 0.00006 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
             xd = 0.06
-            gamma = 0.001
+            gamma = wind_angle
             alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # 0
             Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
             Cya = Cxa * m.sin(alfa) + Cya * m.cos(alfa)
@@ -627,7 +624,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
             initial.update({'Px': Px, 'lam': lam, 'phi': phi, 'eps': eps, 'V_wind': V_wind, 'omega': omega, 'Cya': Cya,
               'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa, 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V,
-               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K})
+               'alfa': alfa, 'gamma': gamma, 'R': R, 'K': K, 'S': S})
             location = 'equations'
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
@@ -655,7 +652,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             #print("sucsess")
 
 
-        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')'''
 
         location = 'compute_acceleration'
         for j in range(1, len(local_V_MOD)):
@@ -770,15 +767,16 @@ if __name__ == '__main__':
         pool.terminate()  # На всякий случай убиваем все процессы
         pool.join()  # Ждем завершения
 
-    fig = plt.figure()
+    matplotlib.use('Qt5Agg')  # или 'TkAgg' если с Qt проблемы
+    fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111, projection='3d')
 
     for i in range(iter):
-        ax.plot(PHI[i], EPS[i],  Y[i], label=f'Вариант {i+1}')
+        ax.plot( PHI[i], LAM[i], Y[i], label=f'Вариант {i+1}')
 
     ax.set_title('Траектории спуска зонда-пенетратора (3D)', fontsize=14, fontname='Times New Roman')
     ax.set_xlabel('PHI (широта/долгота), рад', fontsize=12, fontname='Times New Roman')
-    ax.set_ylabel('EPS (курс), рад', fontsize=12, fontname='Times New Roman')
+    ax.set_ylabel('LAM (курс), рад', fontsize=12, fontname='Times New Roman')
     ax.set_zlabel('Высота, м', fontsize=12, fontname='Times New Roman')
     ax.grid(True)
     # ax.legend()  # при необходимости

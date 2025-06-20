@@ -15,7 +15,7 @@ import sqlite3
 import pandas as pd
 from scipy.integrate import quad
 import gc
-import sqlite3
+
 # мат модель из книжки воронцова упрощенная
 
 
