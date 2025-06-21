@@ -33,7 +33,7 @@ t_flight = np.clip(t_flight, 0, 10000)  # Макс. время 10000 сек
 
 # График 1: Масса батареи от ёмкости
 plt.figure(figsize=(10, 6))
-plt.plot(C_values, Mbat, 'g-', linewidth=2)
+plt.plot(C_values, Mbat, linewidth=2)
 plt.xlabel('Ёмкость батареи, Ач', fontsize=12)
 plt.ylabel('Масса батареи, кг', fontsize=12)
 plt.title('Зависимость массы батареи от ёмкости', fontsize=14)
@@ -42,8 +42,8 @@ plt.show()
 
 # График 2: Полная масса от ёмкости
 plt.figure(figsize=(10, 6))
-plt.plot(C_values, M, 'b-', linewidth=2)
-plt.axhline(y=20, color='r', linestyle='--', label='Макс. масса (20 кг)')
+plt.plot(C_values, M, linewidth=2)
+plt.axhline(y=20, color='r', label='Макс. масса (20 кг)')
 plt.xlabel('Ёмкость батареи, Ач', fontsize=12)
 plt.ylabel('Полная масса, кг', fontsize=12)
 plt.title('Зависимость полной массы от ёмкости', fontsize=14)
@@ -53,7 +53,7 @@ plt.show()
 
 # График 3: Частота вращения от ёмкости
 plt.figure(figsize=(10, 6))
-plt.plot(C_values, n*60, 'm-', linewidth=2)  # Переводим в об/мин
+plt.plot(C_values, n*60, linewidth=2)  # Переводим в об/мин
 plt.xlabel('Ёмкость батареи, Ач', fontsize=12)
 plt.ylabel('Частота вращения, об/мин', fontsize=12)
 plt.title('Зависимость частоты вращения от ёмкости', fontsize=14)
@@ -62,8 +62,8 @@ plt.show()
 
 # График 4: Время полёта от ёмкости
 plt.figure(figsize=(10, 6))
-plt.plot(C_values, t_flight/60, 'r-', linewidth=2)  # Переводим в минуты
-plt.axhline(y=10000/60, color='k', linestyle='--', label='Макс. время (166.7 мин)')
+plt.plot(C_values, t_flight/60, linewidth=2)  # Переводим в минуты
+plt.axhline(y=10000/60, color='k', label='Макс. время (166.7 мин)')
 plt.xlabel('Ёмкость батареи, Ач', fontsize=12)
 plt.ylabel('Время полёта, мин', fontsize=12)
 plt.title('Зависимость времени полёта от ёмкости', fontsize=14)
