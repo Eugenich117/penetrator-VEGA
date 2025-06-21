@@ -1,4 +1,5 @@
 import numpy as np
+import math as m
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -92,4 +93,54 @@ ax.set_ylabel('Частота вращения, об/мин', fontsize=12)
 ax.set_zlabel('Время полёта, мин', fontsize=12)
 ax.set_title('Зависимость времени полёта от массы батареи и частоты вращения', fontsize=14)
 fig.colorbar(surf, shrink=0.5, aspect=5)
+plt.show()
+
+# Фиксированные параметры
+h_fixed = 0.1      # Шаг винта (м)
+n_fixed = 81       # Частота вращения (Гц)
+N_pot_fixed = 4    # Количество винтов
+
+# Диапазоны варьируемых параметров
+rho_values = np.linspace(10, 60, 50)      # Плотность атмосферы (кг/м³)
+r_values = np.linspace(0.05, 1.0, 50)     # Радиус винта (м)
+
+# Создаем сетку для 3D графика
+rho_grid, r_grid = np.meshgrid(rho_values, r_values)
+
+# Функция расчёта взлётной массы
+def calculate_takeoff_mass(rho, r):
+    return m.pi * rho * (r**2 * h_fixed**2 * n_fixed**2 * N_pot_fixed) / g
+
+# Рассчитываем массив взлётных масс
+M_takeoff = calculate_takeoff_mass(rho_grid, r_grid)
+
+# Создание 3D графика
+fig = plt.figure(figsize=(14, 10))
+ax = fig.add_subplot(111, projection='3d')
+
+# Построение поверхности
+surf = ax.plot_surface(r_grid, rho_grid, M_takeoff,
+                      cmap='viridis',
+                      edgecolor='none',
+                      alpha=0.8,
+                      rstride=1,
+                      cstride=1)
+
+# Настройка осей и подписей
+ax.set_xlabel('Радиус винта (м)', fontsize=12, labelpad=10)
+ax.set_ylabel('Плотность атмосферы (кг/м³)', fontsize=12, labelpad=10)
+ax.set_zlabel('Взлётная масса (кг)', fontsize=12, labelpad=10)
+
+ax.set_title('Зависимость взлётной массы от радиуса винта и плотности атмосферы\n'
+             f'При h={h_fixed}м, n={n_fixed}Гц, {N_pot_fixed} винта',
+             fontsize=14, pad=20)
+
+# Добавление цветовой шкалы
+cbar = fig.colorbar(surf, shrink=0.5, aspect=10, pad=0.1)
+cbar.set_label('Взлётная масса (кг)', rotation=270, labelpad=15)
+
+# Угол обзора
+ax.view_init(elev=30, azim=45)
+
+plt.tight_layout()
 plt.show()

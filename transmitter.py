@@ -58,7 +58,7 @@ def plot_orbit_distance_effect():
     plt.plot(distances / 1e6, np.array(bit_rates) / 1e3, label='Скорость передачи (кбит/с)')
     plt.plot(distances / 1e6, np.array(info_rates) / 1e3, label='Информационная скорость (кбит/с)')
     plt.axhline(630, color='r', linestyle='--', label='Целевая скорость 630 кбит/с')
-    plt.xlabel('Расстояние (км)')
+    plt.xlabel('Расстояние (тыс. км)')
     plt.ylabel('Скорость (кбит/с)')
     plt.title('Зависимость скорости передачи от расстояния')
     plt.grid(True)
