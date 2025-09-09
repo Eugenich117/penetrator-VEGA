@@ -166,15 +166,15 @@ def v_sound(R):
 start_time = time.time()
 r1 = 0.4
 # d = 0.6
-mass = 180
+mass = 120
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
 Rb = 6_051_800
 gravy_const = 6.67 * 10 ** (-11)
 g = 8.87
 dt = 0.01
-tetta = -9
-V = np.float64(11000)  # Используем тип данняых float64
+tetta = -19
+V = 11_000  # Используем тип данняых float64
 gamma = np.float64(0)  # Используем тип данных float64
 x = 0
 y = 0
@@ -269,7 +269,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     t = 0
     d = d_list[i]
     S = (m.pi * d ** 2) / 4
-    V, tetta, R, L = np.float64(11_000), -9 * cToRad, Rb + h, 0
+    V, tetta, R, L = 7_500, -9 * cToRad, Rb + h, 0
     initial = {}
     initial['S'] = S
     initial['mass'] = mass

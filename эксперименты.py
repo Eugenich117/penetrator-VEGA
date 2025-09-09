@@ -101,8 +101,8 @@ n_fixed = 81       # Частота вращения (Гц)
 N_pot_fixed = 4    # Количество винтов
 
 # Диапазоны варьируемых параметров
-rho_values = np.linspace(10, 60, 50)      # Плотность атмосферы (кг/м³)
-r_values = np.linspace(0.05, 1.0, 50)     # Радиус винта (м)
+rho_values = np.linspace(1, 30, 50)      # Плотность атмосферы (кг/м³)
+r_values = np.linspace(0.05, 0.5, 50)     # Радиус винта (м)
 
 # Создаем сетку для 3D графика
 rho_grid, r_grid = np.meshgrid(rho_values, r_values)
@@ -114,33 +114,32 @@ def calculate_takeoff_mass(rho, r):
 # Рассчитываем массив взлётных масс
 M_takeoff = calculate_takeoff_mass(rho_grid, r_grid)
 
-# Создание 3D графика
-fig = plt.figure(figsize=(14, 10))
+# Создание фигуры
+fig = plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111, projection='3d')
 
-# Построение поверхности
+# Построение поверхности с разворотом на 180 градусов
 surf = ax.plot_surface(r_grid, rho_grid, M_takeoff,
                       cmap='viridis',
-                      edgecolor='none',
                       alpha=0.8,
-                      rstride=1,
-                      cstride=1)
+                      linewidth=0,
+                      antialiased=True)
 
-# Настройка осей и подписей
-ax.set_xlabel('Радиус винта (м)', fontsize=12, labelpad=10)
-ax.set_ylabel('Плотность атмосферы (кг/м³)', fontsize=12, labelpad=10)
-ax.set_zlabel('Взлётная масса (кг)', fontsize=12, labelpad=10)
+# Настройка осей (развернутых на 180°)
+ax.set_xlabel('Радиус винта (м)', fontsize=12)
+ax.set_ylabel('Плотность атмосферы (кг/м³)', fontsize=12)
+ax.set_zlabel('Взлётная масса (кг)', fontsize=12)
 
-ax.set_title('Зависимость взлётной массы от радиуса винта и плотности атмосферы\n'
-             f'При h={h_fixed}м, n={n_fixed}Гц, {N_pot_fixed} винта',
-             fontsize=14, pad=20)
+# Угол обзора с поворотом на 180° (азимут = 135° вместо -45°)
+ax.view_init(elev=25, azim=135)  # 180° разворот от предыдущего -45°
 
-# Добавление цветовой шкалы
-cbar = fig.colorbar(surf, shrink=0.5, aspect=10, pad=0.1)
+# Инвертирование оси X и Y для полного разворота
+ax.invert_xaxis()
+ax.invert_yaxis()
+
+# Цветовая шкала
+cbar = fig.colorbar(surf, shrink=0.5, aspect=5)
 cbar.set_label('Взлётная масса (кг)', rotation=270, labelpad=15)
-
-# Угол обзора
-ax.view_init(elev=30, azim=45)
 
 plt.tight_layout()
 plt.show()

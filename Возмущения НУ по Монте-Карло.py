@@ -432,7 +432,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 30 #количество итераций
+    iter = 50 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -485,7 +485,7 @@ if __name__ == '__main__':
     # Функция обратного вызова, которая будет вызываться по завершении каждой задачи
 
     # Создаем пул процессов
-    pool = multiprocessing.Pool(processes=30)
+    pool = multiprocessing.Pool(processes=30)#multiprocessing.cpu_count()
 
     # Запускаем задачи асинхронно с отслеживанием завершения
     for task in tasks:
