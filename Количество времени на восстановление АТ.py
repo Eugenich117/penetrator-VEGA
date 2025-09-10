@@ -9,151 +9,299 @@ from matplotlib.figure import Figure
 class AircraftMaintenanceCalculator:
     def __init__(self, root):
         self.root = root
-        self.root.title("Калькулятор времени восстановления воздушных судов - МиГ-29")
+        self.root.title("Калькулятор времени восстановления воздушных судов")
         self.root.geometry("1400x900")
+
+        self.aircraft_data = {
+            "МиГ-29": self.get_mig29_data(),
+            "Су-27": self.get_su27_data(),
+            "Су-35": self.get_su35_data(),
+            "Ту-160": self.get_tu160_data(),
+            "Ил-76": self.get_il76_data(),
+            "Ан-124": self.get_an124_data(),
+            "SSJ-100": self.get_ssj100_data(),
+            "МС-21": self.get_ms21_data()
+        }
 
         self.create_widgets()
 
+    def get_mig29_data(self):
+        return {
+            "experimental_times": "12.5, 15.0, 18.2, 10.8, 22.5, 16.8, 13.2, 24.0, 19.5, 16.2, 15.8, 21.2, 17.5, 20.8, 14.0, 26.5, 18.8, 20.0, 15.5, 23.8, 16.2, 19.5, 15.8, 25.2, 17.5",
+            "components": [
+                ("Двигатель РД-33", "2", "1.6", "28.0"),
+                ("Система управления", "1", "1.2", "18.2"),
+                ("Радиолокационная станция", "1", "2.0", "22.5"),
+                ("Система навигации", "1", "0.9", "15.5"),
+                ("Гидравлическая система", "1", "1.4", "20.8"),
+                ("Топливная система", "1", "1.1", "14.2"),
+                ("Электрооборудование", "1", "1.5", "19.5"),
+                ("Шасси", "3", "0.6", "22.2")
+            ],
+            "description": "Многоцелевой истребитель 4-го поколения"
+        }
+
+    def get_su27_data(self):
+        return {
+            "experimental_times": "16.2, 22.5, 18.8, 26.2, 21.8, 23.2, 17.5, 31.2, 25.8, 20.5, 19.0, 28.5, 22.0, 27.0, 18.2, 34.8, 23.2, 24.5, 19.0, 32.0, 21.8, 25.8, 18.2, 33.5, 22.0",
+            "components": [
+                ("Двигатель АЛ-31Ф", "2", "1.4", "32.5"),
+                ("Система управления", "1", "1.1", "21.5"),
+                ("Радиолокационная станция", "1", "1.8", "27.0"),
+                ("Система навигации", "1", "0.8", "16.8"),
+                ("Гидравлическая система", "1", "1.3", "24.0"),
+                ("Топливная система", "1", "1.0", "17.5"),
+                ("Электрооборудование", "1", "1.4", "22.8"),
+                ("Шасси", "3", "0.5", "25.5")
+            ],
+            "description": "Многоцелевой истребитель 4-го поколения"
+        }
+
+    def get_su35_data(self):
+        return {
+            "experimental_times": "18.8, 22.5, 24.0, 16.2, 28.0, 21.5, 15.0, 30.5, 24.2, 19.0, 17.5, 26.8, 20.2, 24.5, 18.8, 32.0, 22.8, 24.2, 18.8, 28.2, 21.5, 24.0, 19.0, 31.8, 22.8",
+            "components": [
+                ("Двигатель АЛ-41Ф-1С", "2", "1.2", "30.8"),
+                ("Цифровая СУ", "1", "1.0", "19.0"),
+                ("РЛС с АФАР", "1", "1.6", "25.2"),
+                ("ИНС", "1", "0.7", "15.2"),
+                ("Гидравлическая система", "1", "1.1", "22.5"),
+                ("Топливная система", "1", "0.9", "14.0"),
+                ("Электрооборудование", "1", "1.2", "20.2"),
+                ("Шасси", "3", "0.4", "23.0")
+            ],
+            "description": "Многоцелевой истребитель 4++ поколения"
+        }
+
+    def get_tu160_data(self):
+        return {
+            "experimental_times": "42.5, 56.2, 38.8, 65.5, 48.2, 55.8, 40.5, 82.2, 63.5, 46.8, 52.2, 68.5, 49.5, 60.8, 44.2, 78.5, 56.2, 63.5, 48.0, 72.2, 54.5, 62.0, 49.5, 81.2, 58.8",
+            "components": [
+                ("Двигатель НК-32", "4", "2.5", "58.0"),
+                ("Система управления", "1", "1.8", "45.5"),
+                ("Навигационный комплекс", "1", "1.5", "38.2"),
+                ("Топливная система", "1", "2.0", "52.0"),
+                ("Гидравлическая система", "1", "1.6", "42.5"),
+                ("Электрооборудование", "1", "2.2", "60.5"),
+                ("Система вооружения", "1", "1.9", "48.8"),
+                ("Шасси", "12", "1.2", "38.5")
+            ],
+            "description": "Стратегический бомбардировщик-ракетоносец"
+        }
+
+    def get_il76_data(self):
+        return {
+            "experimental_times": "35.2, 45.5, 32.0, 52.2, 40.0, 46.8, 34.5, 62.5, 48.2, 38.8, 42.5, 58.0, 43.8, 50.5, 36.5, 66.2, 45.5, 52.0, 40.2, 59.5, 44.0, 50.2, 42.5, 65.8, 48.8",
+            "components": [
+                ("Двигатель ПС-90", "4", "1.8", "52.5"),
+                ("Система управления", "1", "1.4", "40.8"),
+                ("Навигационный комплекс", "1", "1.2", "33.2"),
+                ("Топливная система", "1", "1.6", "45.2"),
+                ("Гидравлическая система", "1", "1.3", "38.0"),
+                ("Электрооборудование", "1", "1.7", "46.0"),
+                ("Грузовая система", "1", "1.5", "40.5"),
+                ("Шасси", "10", "1.0", "36.8")
+            ],
+            "description": "Военно-транспортный самолет"
+        }
+
+
+    def get_an124_data(self):
+        return {
+            "experimental_times": "52.5, 68.2, 48.0, 78.8, 60.5, 66.8, 54.2, 92.5, 72.2, 58.8, 65.5, 82.0, 64.8, 70.5, 58.2, 88.2, 68.0, 75.5, 62.2, 80.5, 66.8, 72.0, 65.5, 92.2, 70.8",
+            "components": [
+                ("Двигатель Д-18Т", "4", "2.2", "80.5"),
+                ("Система управления", "1", "1.7", "62.8"),
+                ("Навигационный комплекс", "1", "1.4", "50.2"),
+                ("Топливная система", "1", "1.9", "68.5"),
+                ("Гидравлическая система", "1", "1.6", "58.5"),
+                ("Электрооборудование", "1", "2.0", "72.2"),
+                ("Грузовая система", "1", "1.8", "62.5"),
+                ("Шасси", "16", "1.3", "52.0")
+            ],
+            "description": "Тяжелый транспортный самолет"
+        }
+
+
+    def get_ssj100_data(self):
+        return {
+            "experimental_times": "25.2, 32.8, 22.5, 40.2, 30.8, 36.0, 25.8, 48.5, 38.2, 28.5, 33.2, 45.5, 32.0, 40.5, 26.2, 52.0, 34.8, 42.8, 28.5, 46.0, 33.5, 38.2, 30.8, 50.8, 36.0",
+            "components": [
+                ("Двигатель SaM146", "2", "1.0", "38.2"),
+                ("Цифровая СУ", "1", "0.8", "26.0"),
+                ("Авионика", "1", "1.2", "35.5"),
+                ("Навигационный комплекс", "1", "0.7", "22.2"),
+                ("Топливная система", "1", "0.9", "29.5"),
+                ("Гидравлическая система", "1", "0.8", "27.2"),
+                ("Электрооборудование", "1", "1.1", "32.0"),
+                ("Шасси", "6", "0.6", "30.8")
+            ],
+            "description": "Региональный пассажирский самолет"
+        }
+
+
+    def get_ms21_data(self):
+        return {
+            "experimental_times": "22.8, 30.2, 20.0, 38.5, 27.2, 32.5, 22.5, 45.8, 34.8, 26.0, 30.8, 42.8, 28.5, 35.8, 24.8, 48.2, 32.2, 38.2, 27.2, 43.5, 31.0, 35.8, 28.5, 46.0, 33.5",
+            "components": [
+                ("Двигатель ПД-14", "2", "0.9", "34.5"),
+                ("Цифровая СУ", "1", "0.7", "23.5"),
+                ("Авионика", "1", "1.0", "31.8"),
+                ("Навигационный комплекс", "1", "0.6", "19.8"),
+                ("Топливная система", "1", "0.8", "26.0"),
+                ("Гидравлическая система", "1", "0.7", "24.8"),
+                ("Электрооборудование", "1", "0.9", "29.5"),
+                ("Шасси", "8", "0.5", "27.2"),
+                ("Композитные панели", "1", "0.4", "20.0")
+            ],
+            "description": "Магистральный пассажирский самолет"
+        }
+
+
     def create_widgets(self):
-        # Создаем notebook для разделения на вкладки
+        # Создаем notebook для разделения на вкладки по типам самолетов
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
-        # Вкладка 1: Расчет по экспериментальным данным
-        frame_experimental = ttk.Frame(notebook)
-        notebook.add(frame_experimental, text="Экспериментальные данные")
-        self.create_experimental_tab(frame_experimental)
+        # Создаем вкладки для каждого типа самолета
+        for aircraft_type in self.aircraft_data.keys():
+            frame = ttk.Frame(notebook)
+            notebook.add(frame, text=aircraft_type)
+            self.create_aircraft_tab(frame, aircraft_type)
 
-        # Вкладка 2: Расчет на стадии проектирования
-        frame_design = ttk.Frame(notebook)
-        notebook.add(frame_design, text="Проектирование")
-        self.create_design_tab(frame_design)
+        # Вкладка с сравнением
+        frame_comparison = ttk.Frame(notebook)
+        notebook.add(frame_comparison, text="Сравнение самолетов")
+        self.create_comparison_tab(frame_comparison)
 
-        # Вкладка 3: Справочная информация
+        # Вкладка со справочной информацией
         frame_reference = ttk.Frame(notebook)
         notebook.add(frame_reference, text="Справочник")
         self.create_reference_tab(frame_reference)
 
-    def create_experimental_tab(self, parent):
+    def create_aircraft_tab(self, parent, aircraft_type):
+        # Заголовок с описанием самолета
+        desc_frame = ttk.Frame(parent)
+        desc_frame.pack(fill='x', padx=10, pady=5)
+
+        ttk.Label(desc_frame, text=f"{aircraft_type} - {self.aircraft_data[aircraft_type]['description']}",
+                  font=('Arial', 12, 'bold')).pack(pady=5)
+
         # Ввод данных о времени восстановления
-        input_frame = ttk.LabelFrame(parent, text="Ввод данных о времени восстановления (часы)")
+        input_frame = ttk.LabelFrame(parent, text=f"Экспериментальные данные для {aircraft_type} (часы)")
         input_frame.pack(fill='x', padx=10, pady=5)
 
-        # Поле для ввода времени
         ttk.Label(input_frame, text="Введите время восстановления через запятую:").pack(pady=5)
-        self.time_entry = ttk.Entry(input_frame, width=100)
-        self.time_entry.pack(pady=5)
-        self.time_entry.insert(0,
-                               "2.5, 3.0, 4.2, 1.8, 5.5, 3.8, 2.2, 6.0, 4.5, 3.2, 2.8, 5.2, 3.5, 4.8, 2.0, 6.5, 3.8, 4.0, 2.5, 5.8, 3.2, 4.5, 2.8, 6.2, 3.5")
+        time_entry = ttk.Entry(input_frame, width=100)
+        time_entry.pack(pady=5)
+        time_entry.insert(0, self.aircraft_data[aircraft_type]['experimental_times'])
 
         # Уровень доверия
         ttk.Label(input_frame, text="Доверительная вероятность β:").pack(pady=5)
-        self.confidence_var = tk.StringVar(value="0.95")
-        confidence_combo = ttk.Combobox(input_frame, textvariable=self.confidence_var,
+        confidence_var = tk.StringVar(value="0.95")
+        confidence_combo = ttk.Combobox(input_frame, textvariable=confidence_var,
                                         values=["0.80", "0.90", "0.95", "0.975", "0.990", "0.995", "0.9975", "0.999"])
         confidence_combo.pack(pady=5)
 
         # Кнопка расчета
-        ttk.Button(input_frame, text="Рассчитать", command=self.calculate_experimental).pack(pady=10)
+        ttk.Button(input_frame, text="Рассчитать",
+                   command=lambda: self.calculate_experimental(time_entry.get(), confidence_var.get(),
+                                                               result_text, fig, canvas, aircraft_type)).pack(pady=10)
 
-        # Результаты
-        result_frame = ttk.LabelFrame(parent, text="Результаты расчета для МиГ-29")
-        result_frame.pack(fill='both', expand=True, padx=10, pady=5)
-
-        self.result_text = scrolledtext.ScrolledText(result_frame, height=15)
-        self.result_text.pack(fill='both', expand=True, padx=5, pady=5)
-
-        # График
-        self.fig_experimental = Figure(figsize=(10, 5))
-        self.canvas_experimental = FigureCanvasTkAgg(self.fig_experimental, result_frame)
-        self.canvas_experimental.get_tk_widget().pack(fill='both', expand=True)
-
-    def create_design_tab(self, parent):
-        # Таблица для ввода данных о конструктивных элементах
-        table_frame = ttk.LabelFrame(parent, text="Конструктивные элементы МиГ-29")
+        # Таблица компонентов
+        table_frame = ttk.LabelFrame(parent, text=f"Конструктивные элементы {aircraft_type}")
         table_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
-        # Создаем таблицу
         columns = ("Компонент", "Количество", "Интенсивность отказов (10⁻⁵/ч)", "Время восстановления (ч)")
-        self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=12)
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=8)
 
         for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=180)
+            tree.heading(col, text=col)
+            tree.column(col, width=150)
 
-        # Добавляем scrollbar
-        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
 
-        self.tree.pack(side=tk.LEFT, fill='both', expand=True)
+        tree.pack(side=tk.LEFT, fill='both', expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Кнопки для управления таблицей
-        button_frame = ttk.Frame(table_frame)
-        button_frame.pack(fill='x', pady=5)
+        # Заполняем таблицу данными
+        for component in self.aircraft_data[aircraft_type]['components']:
+            tree.insert("", tk.END, values=component)
 
-        ttk.Button(button_frame, text="Добавить элемент", command=self.add_element).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Удалить элемент", command=self.delete_element).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Загрузить типовые данные", command=self.load_mig29_data).pack(side=tk.LEFT,
-                                                                                                     padx=5)
-
-        # Кнопка расчета
-        ttk.Button(parent, text="Рассчитать время восстановления", command=self.calculate_design).pack(pady=10)
+        # Кнопка расчета проектирования
+        ttk.Button(parent, text="Рассчитать время восстановления",
+                   command=lambda: self.calculate_design(tree, design_result_text)).pack(pady=10)
 
         # Результаты
-        result_frame = ttk.LabelFrame(parent, text="Результаты проектирования для МиГ-29")
+        result_frame = ttk.Frame(parent)
         result_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
-        self.design_result_text = scrolledtext.ScrolledText(result_frame, height=12)
-        self.design_result_text.pack(fill='both', expand=True, padx=5, pady=5)
+        # Левая часть - экспериментальные результаты
+        exp_frame = ttk.LabelFrame(result_frame, text="Результаты экспериментального расчета")
+        exp_frame.pack(side=tk.LEFT, fill='both', expand=True, padx=5)
 
-        # Загружаем типовые данные МиГ-29
-        self.load_mig29_data()
+        result_text = scrolledtext.ScrolledText(exp_frame, height=12)
+        result_text.pack(fill='both', expand=True, padx=5, pady=5)
+
+        fig = Figure(figsize=(6, 4))
+        canvas = FigureCanvasTkAgg(fig, exp_frame)
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+
+        # Правая часть - результаты проектирования
+        design_frame = ttk.LabelFrame(result_frame, text="Результаты проектирования")
+        design_frame.pack(side=tk.RIGHT, fill='both', expand=True, padx=5)
+
+        design_result_text = scrolledtext.ScrolledText(design_frame, height=20)
+        design_result_text.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Сохраняем ссылки для доступа
+        setattr(self, f"{aircraft_type}_tree", tree)
+        setattr(self, f"{aircraft_type}_result_text", result_text)
+
+    def create_comparison_tab(self, parent):
+        comparison_frame = ttk.LabelFrame(parent, text="Сравнение времени восстановления самолетов")
+        comparison_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # Кнопка для выполнения сравнения
+        ttk.Button(comparison_frame, text="Выполнить сравнение",
+                   command=lambda: self.perform_comparison(comparison_text, fig_comp, canvas_comp)).pack(pady=10)
+
+        # Текстовое поле для результатов сравнения
+        comparison_text = scrolledtext.ScrolledText(comparison_frame, height=15)
+        comparison_text.pack(fill='both', expand=True, padx=10, pady=5)
+
+        # График сравнения
+        fig_comp = Figure(figsize=(10, 6))
+        canvas_comp = FigureCanvasTkAgg(fig_comp, comparison_frame)
+        canvas_comp.get_tk_widget().pack(fill='both', expand=True)
 
     def create_reference_tab(self, parent):
-        # Справочная информация
         info_text = """
-        МЕТОДИКА РАСЧЕТА ВРЕМЕНИ ВОССТАНОВЛЕНИЯ МИГ-29
+        СПРАВОЧНАЯ ИНФОРМАЦИЯ ПО САМОЛЕТАМ:
 
-        СТАТИСТИКА ОТКАЗОВ ДЛЯ МИГ-29 (примерные данные):
+        МИГ-29: Многоцелевой истребитель 4-го поколения
+        СУ-27: Многоцелевой истребитель 4-го поколения
+        СУ-35: Многоцелевой истребитель 4++ поколения
+        ТУ-160: Стратегический бомбардировщик-ракетоносец
+        ИЛ-76: Военно-транспортный самолет
+        АН-124: Тяжелый транспортный самолет
+        SSJ-100: Региональный пассажирский самолет
+        МС-21: Магистральный пассажирский самолет
 
-        Компонент                | Инт. отказов (10⁻⁵/ч) | Время восстановления (ч)
-        ------------------------|----------------------|-------------------------
-        Двигатель РД-33          | 1.2-2.0              | 4-8
-        Система управления       | 0.8-1.5              | 2-4
-        Радиолокационная станция | 1.5-2.5              | 3-6
-        Система навигации        | 0.6-1.2              | 2-3
-        Гидравлическая система   | 0.9-1.8              | 2-5
-        Топливная система        | 0.7-1.4              | 1-3
-        Электрооборудование      | 1.0-2.0              | 1-4
-        Шасси                    | 0.4-0.8              | 3-6
+        ТИПОВЫЕ ЗНАЧЕНИЯ ВРЕМЕНИ ВОССТАНОВЛЕНИЯ:
+        - Истребители: 3.5-6.5 часов
+        - Бомбардировщики: 8.0-18.0 часов
+        - Транспортные: 6.0-14.0 часов
+        - Пассажирские: 4.0-9.0 часов
 
         ФОРМУЛЫ РАСЧЕТА:
-
-        1. Для экспериментальных данных:
-           t_B = (1/n) * Σ τ_B_i   (среднее арифметическое)
-
-        2. Доверительные границы (логарифмически нормальное распределение):
-           lg t_BH = â + 1.51S² - u_γ * (s/√n) * √(1 + 2.65S²)
-           lg t_BB = â + 1.51S² + u_γ * (s/√n) * √(1 + 2.65S²)
-
-        3. Для проектирования:
-           t_Bη = Σ P_ξ * t_Bξ^э
-           t_B = Σ P_η * t_Bη
+        t_B = (1/n) * Σ τ_B_i
+        Доверительные границы рассчитываются по логарифмически нормальному распределению
 
         КВАНИТИЛИ НОРМАЛЬНОГО РАСПРЕДЕЛЕНИЯ:
-          β     | 0.80 | 0.90 | 0.95 | 0.975 | 0.990 | 0.995 | 0.9975 | 0.999
-          u_γ   | 0.842|1.282 |1.645 | 1.960 | 2.326 | 2.576 | 2.807  | 3.090
-
-        ОПЕРАТИВНОЕ ВРЕМЯ ВОССТАНОВЛЕНИЯ ВКЛЮЧАЕТ:
-          - Обнаружение отказа (15-30% времени)
-          - Устранение неисправности (40-60% времени)
-          - Регулировка и настройка (10-20% времени)
-          - Проверка работоспособности (5-15% времени)
-
-        СРЕДНЕЕ ВРЕМЯ ВОССТАНОВЛЕНИЯ МИГ-29: 
-          По эксплуатационным данным: 3.5-6.5 часов
-          На стадии проектирования: 4.2-5.8 часов
+        β: 0.80, 0.90, 0.95, 0.975, 0.990, 0.995, 0.9975, 0.999
+        u_γ: 0.842, 1.282, 1.645, 1.960, 2.326, 2.576, 2.807, 3.090
         """
 
         text_widget = scrolledtext.ScrolledText(parent, wrap=tk.WORD)
@@ -161,74 +309,8 @@ class AircraftMaintenanceCalculator:
         text_widget.config(state=tk.DISABLED)
         text_widget.pack(fill='both', expand=True, padx=10, pady=10)
 
-    def load_mig29_data(self):
-        # Очищаем текущие данные
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        # Типовые данные для МиГ-29 (основаны на реальной статистике)
-        mig29_components = [
-            ("Двигатель РД-33", "2", "1.6", "6.0"),
-            ("Система управления", "1", "1.2", "3.2"),
-            ("Радиолокационная станция", "1", "2.0", "4.5"),
-            ("Система навигации", "1", "0.9", "2.5"),
-            ("Гидравлическая система", "1", "1.4", "3.8"),
-            ("Топливная система", "1", "1.1", "2.2"),
-            ("Электрооборудование", "1", "1.5", "3.5"),
-            ("Шасси", "3", "0.6", "4.2"),
-            ("Тормозная система", "1", "0.8", "2.8"),
-            ("Система кондиционирования", "1", "0.7", "2.0"),
-            ("Приборная панель", "1", "0.5", "1.8"),
-            ("Система вооружения", "1", "1.8", "5.2")
-        ]
-
-        for component in mig29_components:
-            self.tree.insert("", tk.END, values=component)
-
-    def add_element(self):
-        # Диалог для добавления нового элемента
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Добавить конструктивный элемент")
-        dialog.geometry("400x250")
-
-        ttk.Label(dialog, text="Компонент:").pack(pady=5)
-        type_entry = ttk.Entry(dialog)
-        type_entry.pack(pady=5)
-
-        ttk.Label(dialog, text="Количество:").pack(pady=5)
-        count_entry = ttk.Entry(dialog)
-        count_entry.pack(pady=5)
-
-        ttk.Label(dialog, text="Интенсивность отказов (10⁻⁵/ч):").pack(pady=5)
-        lambda_entry = ttk.Entry(dialog)
-        lambda_entry.pack(pady=5)
-
-        ttk.Label(dialog, text="Время восстановления (ч):").pack(pady=5)
-        time_entry = ttk.Entry(dialog)
-        time_entry.pack(pady=5)
-
-        def add():
-            values = (
-                type_entry.get(),
-                count_entry.get(),
-                lambda_entry.get(),
-                time_entry.get()
-            )
-            if all(values):
-                self.tree.insert("", tk.END, values=values)
-                dialog.destroy()
-
-        ttk.Button(dialog, text="Добавить", command=add).pack(pady=10)
-
-    def delete_element(self):
-        selected = self.tree.selection()
-        if selected:
-            self.tree.delete(selected)
-
-    def calculate_experimental(self):
+    def calculate_experimental(self, times_str, confidence_str, result_text, fig, canvas, aircraft_type):
         try:
-            # Получаем данные из поля ввода
-            times_str = self.time_entry.get()
             times = [float(x.strip()) for x in times_str.split(',') if x.strip()]
 
             if not times:
@@ -236,26 +318,21 @@ class AircraftMaintenanceCalculator:
                 return
 
             n = len(times)
-            t_B = sum(times) / n  # Формула (1)
+            t_B = sum(times) / n
 
-            # Вычисляем параметры для доверительных интервалов
             log_times = [math.log10(t) for t in times]
-            a_hat = sum(log_times) / n  # Формула (4)
+            a_hat = sum(log_times) / n
 
-            S_squared = sum((x - a_hat) ** 2 for x in log_times) / (n - 1)  # Формула (5)
+            S_squared = sum((x - a_hat) ** 2 for x in log_times) / (n - 1)
             S = math.sqrt(S_squared)
 
-            # Получаем квантиль для выбранного уровня доверия
-            beta = float(self.confidence_var.get())
-            gamma = (beta + 1) / 2
-
+            beta = float(confidence_str)
             u_gamma_dict = {
                 0.80: 0.842, 0.90: 1.282, 0.95: 1.645, 0.975: 1.960,
                 0.990: 2.326, 0.995: 2.576, 0.9975: 2.807, 0.999: 3.090
             }
             u_gamma = u_gamma_dict.get(beta, 1.645)
 
-            # Вычисляем доверительные границы (формулы 2 и 3)
             term = u_gamma * (S / math.sqrt(n)) * math.sqrt(1 + 2.65 * S_squared)
             log_t_BH = a_hat + 1.51 * S_squared - term
             log_t_BB = a_hat + 1.51 * S_squared + term
@@ -263,148 +340,160 @@ class AircraftMaintenanceCalculator:
             t_BH = 10 ** log_t_BH
             t_BB = 10 ** log_t_BB
 
-            # Анализ готовности
-            availability = self.calculate_availability(t_B)
+            availability = self.calculate_availability(t_B, aircraft_type)
 
-            # Выводим результаты
-            result = f"""РЕЗУЛЬТАТЫ РАСЧЕТА ДЛЯ МИГ-29:
+            result = f"""РЕЗУЛЬТАТЫ РАСЧЕТА ДЛЯ {aircraft_type}:
 
-Количество отказов (n): {n}
-Среднее время восстановления t_B: {t_B:.2f} часов
-Оценка параметра â: {a_hat:.3f}
-Оценка параметра S: {S:.3f}
+Количество отказов: {n}
+Среднее время восстановления: {t_B:.2f} часов
+Доверительный интервал ({beta}): [{t_BH:.2f}; {t_BB:.2f}] часов
 
-ДОВЕРИТЕЛЬНЫЕ ГРАНИЦЫ (β = {beta}):
-Нижняя граница t_BH: {t_BH:.2f} часов
-Верхняя граница t_BB: {t_BB:.2f} часов
-Доверительный интервал: [{t_BH:.2f}; {t_BB:.2f}] часов
-
-СТАТИСТИЧЕСКИЕ ХАРАКТЕРИСТИКИ:
-Минимальное время: {min(times):.2f} часов
-Максимальное время: {max(times):.2f} часов
-Стандартное отклонение: {np.std(times):.2f} часов
+СТАТИСТИКА:
+Минимум: {min(times):.2f} ч, Максимум: {max(times):.2f} ч
+Стандартное отклонение: {np.std(times):.2f} ч
 
 АНАЛИЗ ГОТОВНОСТИ:
 {availability}
             """
 
-            self.result_text.delete(1.0, tk.END)
-            self.result_text.insert(1.0, result)
+            result_text.delete(1.0, tk.END)
+            result_text.insert(1.0, result)
 
-            # Строим график
-            self.plot_experimental_data(times, t_B, t_BH, t_BB)
+            self.plot_data(times, t_B, t_BH, t_BB, fig, canvas, aircraft_type)
 
         except Exception as e:
-            messagebox.showerror("Ошибка расчета", f"Ошибка: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка расчета: {str(e)}")
 
-    def calculate_availability(self, t_B):
-        # Упрощенный анализ готовности (MTBF для МиГ-29 ~ 50-100 часов)
-        mtbf = 80  # Среднее время между отказами (примерно)
+    def calculate_availability(self, t_B, aircraft_type):
+        mtbf_values = {
+            "МиГ-29": 80, "Су-27": 85, "Су-35": 90,
+            "Ту-160": 120, "Ил-76": 150, "Ан-124": 140,
+            "SSJ-100": 200, "МС-21": 220
+        }
+
+        mtbf = mtbf_values.get(aircraft_type, 100)
         availability = mtbf / (mtbf + t_B) * 100
 
         if availability > 95:
-            status = "ОТЛИЧНАЯ ГОТОВНОСТЬ"
+            status = "ОТЛИЧНАЯ"
         elif availability > 90:
-            status = "ХОРОШАЯ ГОТОВНОСТЬ"
+            status = "ХОРОШАЯ"
         elif availability > 85:
-            status = "УДОВЛЕТВОРИТЕЛЬНАЯ ГОТОВНОСТЬ"
+            status = "УДОВЛЕТВОРИТЕЛЬНАЯ"
         else:
-            status = "НИЗКАЯ ГОТОВНОСТЬ"
+            status = "НИЗКАЯ"
 
         return f"Коэффициент готовности: {availability:.1f}%\nСтатус: {status}"
 
-    def plot_experimental_data(self, times, t_B, t_BH, t_BB):
-        self.fig_experimental.clear()
-        ax = self.fig_experimental.add_subplot(111)
+    def plot_data(self, times, t_B, t_BH, t_BB, fig, canvas, aircraft_type):
+        fig.clear()
+        ax = fig.add_subplot(111)
 
-        # Гистограмма
         n_bins = min(10, len(times) // 3)
-        ax.hist(times, bins=n_bins, alpha=0.7, edgecolor='black', color='skyblue')
+        ax.hist(times, bins=n_bins, alpha=0.7, edgecolor='black', color='lightblue')
 
-        # Вертикальные линии для среднего и доверительных границ
-        ax.axvline(t_B, color='red', linestyle='-', linewidth=3, label=f'Среднее (t_B = {t_B:.2f} ч)')
-        ax.axvline(t_BH, color='green', linestyle='--', linewidth=2, label=f'Нижняя граница ({t_BH:.2f} ч)')
-        ax.axvline(t_BB, color='blue', linestyle='--', linewidth=2, label=f'Верхняя граница ({t_BB:.2f} ч)')
+        ax.axvline(t_B, color='red', linewidth=3, label=f'Среднее: {t_B:.2f} ч')
+        ax.axvline(t_BH, color='green', linestyle='--', label=f'Нижняя: {t_BH:.2f} ч')
+        ax.axvline(t_BB, color='blue', linestyle='--', label=f'Верхняя: {t_BB:.2f} ч')
 
         ax.set_xlabel('Время восстановления (часы)')
-        ax.set_ylabel('Частота отказов')
-        ax.set_title('Распределение времени восстановления МиГ-29')
+        ax.set_ylabel('Частота')
+        ax.set_title(f'Распределение времени восстановления - {aircraft_type}')
         ax.legend()
         ax.grid(True, alpha=0.3)
 
-        self.canvas_experimental.draw()
+        canvas.draw()
 
-    def calculate_design(self):
+    def calculate_design(self, tree, result_text):
         try:
-            # Собираем данные из таблицы
             elements = []
-            for item in self.tree.get_children():
-                values = self.tree.item(item)['values']
+            for item in tree.get_children():
+                values = tree.item(item)['values']
                 if len(values) == 4:
                     elements.append({
-                        'type': values[0],
                         'count': float(values[1]),
-                        'lambda': float(values[2]) * 1e-5,  # Переводим в 1/ч
+                        'lambda': float(values[2]) * 1e-5,
                         'time': float(values[3])
                     })
 
-            if not elements:
-                messagebox.showerror("Ошибка", "Добавьте данные о конструктивных элементах")
-                return
-
-            # Вычисляем параметры по формулам 6-9
-            omega_1 = 0
-            numerator = 0
-
-            for elem in elements:
-                r_xi = elem['count']
-                lambda_xi = elem['lambda']
-                t_Bxi = elem['time']
-
-                omega_1 += r_xi * lambda_xi
-                numerator += r_xi * lambda_xi * t_Bxi
-
-            # Среднее время восстановления (формула 6)
+            omega_1 = sum(elem['count'] * elem['lambda'] for elem in elements)
+            numerator = sum(elem['count'] * elem['lambda'] * elem['time'] for elem in elements)
             t_B = numerator / omega_1 if omega_1 != 0 else 0
 
-            # Анализ критических компонентов
-            critical_components = []
-            for elem in elements:
-                contribution = elem['count'] * elem['lambda'] * elem['time'] / omega_1
-                if contribution > 0.5:  # Компоненты с вкладом > 0.5 часа
-                    critical_components.append((elem['type'], contribution))
+            result = f"""РЕЗУЛЬТАТЫ ПРОЕКТИРОВАНИЯ:
 
-            # Формируем результат
-            result = f"""РЕЗУЛЬТАТЫ РАСЧЕТА ДЛЯ МИГ-29:
-
-Параметр потока отказов ω: {omega_1:.6f} 1/ч
-Среднее время восстановления t_B: {t_B:.2f} часов
+Параметр потока отказов: {omega_1:.6f} 1/ч
+Среднее время восстановления: {t_B:.2f} часов
 Интенсивность отказов: {omega_1 * 1e5:.2f} × 10⁻⁵ 1/ч
 
-ДЕТАЛИЗИРОВАННЫЙ РАСЧЕТ КОМПОНЕНТОВ:
-
+ДЕТАЛИЗАЦИЯ ПО КОМПОНЕНТАМ:
 """
-            total_contribution = 0
-            for i, elem in enumerate(elements, 1):
-                contribution = elem['count'] * elem['lambda'] * elem['time'] / omega_1
-                total_contribution += contribution
-                result += f"{i}. {elem['type']}: {contribution:.3f} ч ({contribution / t_B * 100:.1f}%)\n"
+            for item in tree.get_children():
+                values = tree.item(item)['values']
+                if len(values) == 4:
+                    count = float(values[1])
+                    lambda_val = float(values[2]) * 1e-5
+                    time_val = float(values[3])
+                    contribution = count * lambda_val * time_val / omega_1
+                    result += f"- {values[0]}: {contribution:.3f} ч ({contribution / t_B * 100:.1f}%)\n"
 
-            result += f"\nОБЩАЯ ИНФОРМАЦИЯ:\n"
-            result += f"Количество типов компонентов: {len(elements)}\n"
-            result += f"Суммарный вклад: {total_contribution:.3f} ч\n"
-
-            if critical_components:
-                result += f"\nКРИТИЧЕСКИЕ КОМПОНЕНТЫ (вклад > 0.5 ч):\n"
-                for comp, time in critical_components:
-                    result += f"- {comp}: {time:.2f} ч\n"
-
-
-            self.design_result_text.delete(1.0, tk.END)
-            self.design_result_text.insert(1.0, result)
+            result_text.delete(1.0, tk.END)
+            result_text.insert(1.0, result)
 
         except Exception as e:
-            messagebox.showerror("Ошибка расчета", f"Ошибка: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка расчета: {str(e)}")
+
+    def perform_comparison(self, comparison_text, fig, canvas):
+        try:
+            results = {}
+
+            for aircraft in self.aircraft_data.keys():
+                # Имитируем расчет для каждого самолета
+                times = [float(x.strip()) for x in self.aircraft_data[aircraft]['experimental_times'].split(',') if
+                         x.strip()]
+                if times:
+                    t_B = sum(times) / len(times)
+                    results[aircraft] = t_B
+
+            # Сортируем результаты
+            sorted_results = sorted(results.items(), key=lambda x: x[1])
+
+            # Формируем текст сравнения
+            comparison_result = "СРАВНЕНИЕ СРЕДНЕГО ВРЕМЕНИ ВОССТАНОВЛЕНИЯ:\n\n"
+            for i, (aircraft, time) in enumerate(sorted_results, 1):
+                comparison_result += f"{i}. {aircraft}: {time:.2f} часов\n"
+
+            comparison_text.delete(1.0, tk.END)
+            comparison_text.insert(1.0, comparison_result)
+
+            # Строим график сравнения
+            self.plot_comparison(results, fig, canvas)
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка сравнения: {str(e)}")
+
+    def plot_comparison(self, results, fig, canvas):
+        fig.clear()
+        ax = fig.add_subplot(111)
+
+        aircrafts = list(results.keys())
+        times = list(results.values())
+
+        colors = ['lightblue', 'lightgreen', 'lightcoral', 'lightsalmon',
+                  'lightseagreen', 'lightpink', 'lightyellow', 'lightgray']
+
+        bars = ax.bar(aircrafts, times, color=colors[:len(aircrafts)])
+        ax.set_ylabel('Время восстановления (часы)')
+        ax.set_title('Сравнение времени восстановления самолетов')
+        ax.tick_params(axis='x', rotation=45)
+
+        # Добавляем значения на столбцы
+        for bar, time in zip(bars, times):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.1,
+                    f'{time:.1f}', ha='center', va='bottom')
+
+        fig.tight_layout()
+        canvas.draw()
 
 
 def main():

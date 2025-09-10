@@ -215,67 +215,82 @@ def sign(x):
     else:
         return 0
 
+
 def dV_func(initial):
+    """
+    Уравнение изменения скорости
+    Из системы: dV/dt = -1/(2*Px)*ρ*V² - g*sinθ
+    """
     Px = initial['Px']
     ro = initial['ro']
     V = initial['V']
     tetta = initial['tetta']
-    Cxa = initial['Cxa']
-    S = initial['S']
-    dV = -1 / (2 * Px) * ro * V ** 2 - (g * Rb ** 2 / R ** 2) * m.sin(tetta)
-    #dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * Cxa * S))) / mass
+    R = initial['R']
+
+    # Локальное гравитационное ускорение (g = g0 * Rb²/R²)
+    g_local = g * (Rb ** 2) / (R ** 2)
+
+    dV = -1 / (2 * Px) * ro * V ** 2 - g_local * m.sin(tetta)
     return dV, 'V'
 
 
 def dtetta_func(initial):
+    """
+    Уравнение изменения угла траектории
+    Из системы: dθ/dt = 1/(2*Px)*ρ*V*Kδ*cosγ + (V²/R - g)*cosθ/V
+    """
     Px = initial['Px']
     ro = initial['ro']
     V = initial['V']
-    K = initial['K']
-    gamma = initial['gamma']
+    K = initial['K']  # Kδ - аэродинамическое качество
+    gamma = initial['gamma']  # угол крена
     R = initial['R']
     tetta = initial['tetta']
-    V_wind = initial['V_wind']
-    Cya = initial['Cya']
-    S = initial['S']
-    #dtetta = (1 / (2 * Px)) * ro * V * K + ((V ** 2 - (g * Rb ** 2 / R ** 2) * R) / (V * R)) * m.cos(tetta)
-    dtetta=((-(g*Rb**2/R**2)*m.cos(tetta))/m.sqrt(V**2+V_wind**2)+(m.sqrt(V**2+V_wind**2)/R)) # пенетратор ВА
-    #dtetta = ((0.5 * ro * V ** 2 * Cya * S) / (mass * V)) - ((g * Rb ** 2 / R ** 2) / V) * m.cos(tetta) + ((V * m.cos(tetta) / R)) #  из теории полета
+
+    # Локальное гравитационное ускорение
+    g_local = g * (Rb ** 2) / (R ** 2)
+
+    dtetta = (1 / (2 * Px)) * ro * V * K * m.cos(gamma) + ((V ** 2 / R) - g_local) * m.cos(tetta) / V
     return dtetta, 'tetta'
 
 
 def deps_func(initial):
+    """
+    Уравнение изменения курса
+    Из системы: dε/dt = 1/(2*Px)*ρ*V*Kδ*sinγ/cosθ - V/R*cosθ*tgφ*cosε
+    """
     Px = initial['Px']
     ro = initial['ro']
     V = initial['V']
-    K = initial['K']
+    K = initial['K']  # Kδ - аэродинамическое качество
+    gamma = initial['gamma']  # угол крена
     tetta = initial['tetta']
     eps = initial['eps']
     phi = initial['phi']
     R = initial['R']
 
-    deps = - V / R * m.cos(tetta) * m.tan(phi) * m.cos(eps) # первое слагаемое в системе (1 / (2 * Px)) * ro * V * (V * K * m.sin(gamma) / m.cos(tetta))
+    deps = (1 / (2 * Px)) * ro * V * K * m.sin(gamma) / m.cos(tetta) - (V / R) * m.cos(tetta) * m.tan(phi) * m.cos(eps)
     return deps, 'eps'
 
 
 def dphi_func(initial):
+    """
+    Уравнение изменения широты
+    Из системы: dφ/dt = V/R * cosθ * sinε
+    """
     V = initial['V']
     R = initial['R']
     tetta = initial['tetta']
     eps = initial['eps']
 
-    dphi = V / R * m.cos(tetta) * m.sin(eps) + initial['omega']
+    dphi = (V / R) * m.cos(tetta) * m.sin(eps)
     return dphi, 'phi'
 
 
 def dlam_func(initial):
     """
-    Изменение долготы
-    initial['V'] - скорость [м/с]
-    initial['theta'] - угол наклона [рад]
-    initial['eps'] - угол курса [рад]
-    initial['phi'] - широта [рад]
-    initial['H'] - высота [м]
+    Уравнение изменения долготы
+    Из системы: dλ/dt = V/R * cosθ * cosε/cosφ
     """
     V = initial['V']
     tetta = initial['tetta']
@@ -283,11 +298,15 @@ def dlam_func(initial):
     phi = initial['phi']
     R = initial['R']
 
-    dlam = V * m.cos(tetta) * m.cos(eps) / (R * m.cos(phi))
+    dlam = (V / R) * m.cos(tetta) * m.cos(eps) / m.cos(phi)
     return dlam, 'lam'
 
 
 def dR_func(initial):
+    """
+    Уравнение изменения радиальной координаты (высоты)
+    Из системы: dR/dt = V * sinθ
+    """
     V = initial['V']
     tetta = initial['tetta']
 
@@ -479,6 +498,19 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
     return V_wind, wind_angle, next_update_time
 
 
+def spherical_to_cartesian(phi, lam, R):
+    """
+    Преобразование сферических координат в декартовы
+    phi - широта [рад]
+    lam - долгота [рад]
+    R - расстояние от центра планеты [м]
+    """
+    x = R * m.cos(phi) * m.cos(lam)
+    y = R * m.cos(phi) * m.sin(lam)
+    z = R * m.sin(phi)
+    return x, y, z
+
+
 def runge_kutta_4(equations, initial, dt, dx):
     k1 = {key: 0 for key in dx}
     k2 = {key: 0 for key in dx}
@@ -591,7 +623,11 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_wind_angle.append(wind_angle)
             local_v_wind.append(V_wind)
             local_TETTA.append(tetta * cToDeg)
-            #local_X.append(L)
+            # Преобразование в декартовы координаты
+            '''x, y, z = spherical_to_cartesian(phi, lam, R)
+            local_X.append(x)
+            local_Y_cart.append(y)
+            local_Z.append(z)'''
             local_Y.append(R - Rb)
             local_V_MOD.append(V)
             local_T.append(t)
@@ -772,7 +808,14 @@ if __name__ == '__main__':
     ax = fig.add_subplot(111, projection='3d')
 
     for i in range(iter):
-        ax.plot( PHI[i], LAM[i], Y[i], label=f'Вариант {i+1}')
+        ax.plot(LAM[i], PHI[i], Y[i], label=f'Вариант {i+1}')
+    '''for i in range(iter):
+        # Преобразуем координаты для отображения относительно поверхности
+        X_rel = [x - Rb * m.cos(phi) * m.cos(lam) for x, phi, lam in zip(X[i], PHI[i], LAM[i])]
+        Y_rel = [y - Rb * m.cos(phi) * m.sin(lam) for y, phi, lam in zip(Y[i], PHI[i], LAM[i])]
+        Z_rel = [z - Rb * m.sin(phi) for z, phi in zip(Z[i], PHI[i])]
+
+        ax.plot(X_rel, Y_rel, Z_rel, label=f'Вариант {i + 1}', linewidth=1)'''
 
     ax.set_title('Траектории спуска зонда-пенетратора (3D)', fontsize=14, fontname='Times New Roman')
     ax.set_xlabel('PHI (широта/долгота), рад', fontsize=12, fontname='Times New Roman')
@@ -785,7 +828,7 @@ if __name__ == '__main__':
     plt.show()
 
     for i in range(iter):
-        plt.plot(PHI[i], Y[i], label=f'Вариант {i+1}')
+        plt.plot(LAM[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
