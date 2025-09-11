@@ -354,7 +354,6 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
-        xd = 0.06
         Cxa = ((2 * L * r2 * (1 + r1 / r2)) / S) * (np.tan(Qk) / 2) * (2 * np.cos(0.3) ** 2 * np.sin(Qk) ** 2 + np.sin(0.3) ** 2 * np.cos(Qk) ** 2) #Cx(V, V_sound)
         print(Cxa)
         Cxa_wind = Cx_wind(V, V_sound)

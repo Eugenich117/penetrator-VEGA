@@ -15,8 +15,6 @@ import sqlite3
 import pandas as pd
 # мат модель из книжки воронцова упрощенная
 
-
-
 # Cxa = 1.3#((2*L*r2*(1+r1/r2)/S))*(m.tan(Qk)/2)*(2*m.cos(0)**2*m.sin(Qk)**2+m.sin(0))
 # Cya = 0#((2*L*r2*(1+r1/r2))/S)*m.pi*m.cos(0)*m.sin(0)*m.cos(Qk)*m.cos(Qk)
 # Px = mass / Cxa * S

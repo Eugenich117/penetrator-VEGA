@@ -5,10 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/модификация корпуса пенетратора.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Количество времени на восстановление АТ.py" beforeDir="false" afterPath="$PROJECT_DIR$/Количество времени на восстановление АТ.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/пенетратор_расширенная_мат_модель.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор_расширенная_мат_модель.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/модификация корпуса пенетратора.py" beforeDir="false" afterPath="$PROJECT_DIR$/модификация корпуса пенетратора.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -343,7 +343,7 @@
       <workItem from="1757329007219" duration="38000" />
       <workItem from="1757408852177" duration="18795000" />
       <workItem from="1757505146237" duration="6856000" />
-      <workItem from="1757530033655" duration="9346000" />
+      <workItem from="1757530033655" duration="19890000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -489,7 +489,15 @@
       <option name="project" value="LOCAL" />
       <updated>1757454096667</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="добавлены самолеты в файле про самолеты и исправлена расширенная мат модель, создан файл по проектированию корпуса пенетратора">
+      <option name="closed" value="true" />
+      <created>1757543685972</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1757543685972</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -522,7 +530,8 @@
     <MESSAGE value="исправлены графики и добавлен файл с расчетом радиолинии, также внесен бинарный релиз оптимизатора квадратичной формы и одного файла для расчета подъемной силы аэростата в зависимости от времени суток на венере" />
     <MESSAGE value="добавлен еще один трехмерный график" />
     <MESSAGE value="все старые файлы с экспериментами, ничего не менял, добавлена первая версия &quot;Количество времени на восстановление АТ.py&quot;" />
-    <option name="LAST_COMMIT_MESSAGE" value="все старые файлы с экспериментами, ничего не менял, добавлена первая версия &quot;Количество времени на восстановление АТ.py&quot;" />
+    <MESSAGE value="добавлены самолеты в файле про самолеты и исправлена расширенная мат модель, создан файл по проектированию корпуса пенетратора" />
+    <option name="LAST_COMMIT_MESSAGE" value="добавлены самолеты в файле про самолеты и исправлена расширенная мат модель, создан файл по проектированию корпуса пенетратора" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -561,7 +570,7 @@
     <SUITE FILE_PATH="coverage/penetrator_VEGA$UAV_venus.coverage" NAME="UAV_venus Coverage Results" MODIFIED="1750509497036" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="модификация корпуса пенетратора Coverage Results" MODIFIED="1757542298030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$optimize_func.coverage" NAME="optimize_func Coverage Results" MODIFIED="1749326859281" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Количество времени на восстановление АТ Coverage Results" MODIFIED="1757495283112" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Количество времени на восстановление АТ Coverage Results" MODIFIED="1757607406874" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$theory_of_fly.coverage" NAME="theory_of_fly Coverage Results" MODIFIED="1745968062919" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="оптимизация_пенетратор Coverage Results" MODIFIED="1756588906178" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="эксперименты Coverage Results" MODIFIED="1750518017884" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

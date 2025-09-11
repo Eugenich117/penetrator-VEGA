@@ -4,6 +4,8 @@ import math
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import os
+import json
 
 
 class AircraftMaintenanceCalculator:
@@ -12,7 +14,37 @@ class AircraftMaintenanceCalculator:
         self.root.title("Калькулятор времени восстановления воздушных судов")
         self.root.geometry("1400x900")
 
-        self.aircraft_data = {
+        # Загружаем данные из файла или используем стандартные
+        self.aircraft_data = self.load_data()
+
+        # Словарь для хранения ссылок на деревья
+        self.trees = {}
+
+        self.create_widgets()
+
+        # Сохраняем данные при закрытии программы
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def load_data(self):
+        """Загружает данные из файла или возвращает стандартные данные"""
+        data_file = "aircraft_data.json"
+
+        if os.path.exists(data_file):
+            try:
+                with open(data_file, 'r', encoding='utf-8') as f:
+                    saved_data = json.load(f)
+                    print("Данные загружены из файла")
+                    return saved_data
+            except (json.JSONDecodeError, FileNotFoundError) as e:
+                print(f"Ошибка загрузки файла: {e}, используем стандартные данные")
+                return self.get_default_data()
+        else:
+            print("Файл не найден, используем стандартные данные")
+            return self.get_default_data()
+
+    def get_default_data(self):
+        """Возвращает стандартные данные"""
+        return {
             "МиГ-29": self.get_mig29_data(),
             "Су-27": self.get_su27_data(),
             "Су-35": self.get_su35_data(),
@@ -23,7 +55,21 @@ class AircraftMaintenanceCalculator:
             "МС-21": self.get_ms21_data()
         }
 
-        self.create_widgets()
+    def save_data(self):
+        """Сохраняет данные в файл"""
+        data_file = "aircraft_data.json"
+
+        try:
+            with open(data_file, 'w', encoding='utf-8') as f:
+                json.dump(self.aircraft_data, f, ensure_ascii=False, indent=2)
+            print("Данные успешно сохранены в файл")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось сохранить данные: {str(e)}")
+
+    def on_closing(self):
+        """Обработчик закрытия окна"""
+        self.save_data()
+        self.root.destroy()
 
     def get_mig29_data(self):
         return {
@@ -105,7 +151,6 @@ class AircraftMaintenanceCalculator:
             "description": "Военно-транспортный самолет"
         }
 
-
     def get_an124_data(self):
         return {
             "experimental_times": "52.5, 68.2, 48.0, 78.8, 60.5, 66.8, 54.2, 92.5, 72.2, 58.8, 65.5, 82.0, 64.8, 70.5, 58.2, 88.2, 68.0, 75.5, 62.2, 80.5, 66.8, 72.0, 65.5, 92.2, 70.8",
@@ -121,7 +166,6 @@ class AircraftMaintenanceCalculator:
             ],
             "description": "Тяжелый транспортный самолет"
         }
-
 
     def get_ssj100_data(self):
         return {
@@ -139,7 +183,6 @@ class AircraftMaintenanceCalculator:
             "description": "Региональный пассажирский самолет"
         }
 
-
     def get_ms21_data(self):
         return {
             "experimental_times": "22.8, 30.2, 20.0, 38.5, 27.2, 32.5, 22.5, 45.8, 34.8, 26.0, 30.8, 42.8, 28.5, 35.8, 24.8, 48.2, 32.2, 38.2, 27.2, 43.5, 31.0, 35.8, 28.5, 46.0, 33.5",
@@ -156,7 +199,6 @@ class AircraftMaintenanceCalculator:
             ],
             "description": "Магистральный пассажирский самолет"
         }
-
 
     def create_widgets(self):
         # Создаем notebook для разделения на вкладки по типам самолетов
@@ -178,6 +220,10 @@ class AircraftMaintenanceCalculator:
         frame_reference = ttk.Frame(notebook)
         notebook.add(frame_reference, text="Справочник")
         self.create_reference_tab(frame_reference)
+
+        # Кнопка для ручного сохранения в главном окне
+        save_button = ttk.Button(self.root, text="Сохранить данные", command=self.save_data)
+        save_button.pack(pady=5)
 
     def create_aircraft_tab(self, parent, aircraft_type):
         # Заголовок с описанием самолета
@@ -225,9 +271,15 @@ class AircraftMaintenanceCalculator:
         tree.pack(side=tk.LEFT, fill='both', expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Заполняем таблицу данными
+        # Сохраняем ссылку на дерево
+        self.trees[aircraft_type] = tree
+
+        # Заполняем таблицу данными из aircraft_data
         for component in self.aircraft_data[aircraft_type]['components']:
             tree.insert("", tk.END, values=component)
+
+        # Добавляем возможность редактирования двойным кликом
+        tree.bind("<Double-1>", lambda event: self.on_double_click(event, tree, aircraft_type))
 
         # Кнопка расчета проектирования
         ttk.Button(parent, text="Рассчитать время восстановления",
@@ -255,9 +307,68 @@ class AircraftMaintenanceCalculator:
         design_result_text = scrolledtext.ScrolledText(design_frame, height=20)
         design_result_text.pack(fill='both', expand=True, padx=5, pady=5)
 
-        # Сохраняем ссылки для доступа
-        setattr(self, f"{aircraft_type}_tree", tree)
-        setattr(self, f"{aircraft_type}_result_text", result_text)
+    def on_double_click(self, event, tree, aircraft_type):
+        """Обработчик двойного клика для редактирования ячейки"""
+        region = tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+
+        column = tree.identify_column(event.x)
+        column_index = int(column[1:]) - 1
+        item = tree.identify_row(event.y)
+
+        # Разрешаем редактирование только колонки "Время восстановления (ч)" (индекс 3)
+        if column_index != 3:
+            return
+
+        # Получаем текущее значение
+        current_values = tree.item(item, "values")
+        current_value = current_values[column_index]
+
+        # Создаем окно редактирования
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Редактирование времени восстановления")
+        edit_window.geometry("300x100")
+        edit_window.transient(self.root)
+        edit_window.grab_set()
+
+        ttk.Label(edit_window, text="Новое значение времени восстановления (ч):").pack(pady=5)
+
+        edit_var = tk.StringVar(value=current_value)
+        edit_entry = ttk.Entry(edit_window, textvariable=edit_var, width=20)
+        edit_entry.pack(pady=5)
+        edit_entry.select_range(0, tk.END)
+        edit_entry.focus()
+
+        def save_edit():
+            new_value = edit_var.get()
+            try:
+                # Проверяем, что введено число
+                float_value = float(new_value)
+                # Обновляем значение в таблице
+                new_values = list(current_values)
+                new_values[column_index] = str(float_value)
+                tree.item(item, values=new_values)
+                # Обновляем данные в aircraft_data
+                self.update_aircraft_data(aircraft_type, tree, item, new_values)
+                # Автоматически сохраняем изменения
+                self.save_data()
+                edit_window.destroy()
+            except ValueError:
+                messagebox.showerror("Ошибка", "Введите числовое значение")
+
+        ttk.Button(edit_window, text="Сохранить", command=save_edit).pack(pady=5)
+        edit_window.bind('<Return>', lambda e: save_edit())
+
+    def update_aircraft_data(self, aircraft_type, tree, item, new_values):
+        """Обновляем данные в словаре aircraft_data"""
+        # Получаем индекс элемента в таблице
+        item_index = tree.index(item)
+
+        # Обновляем соответствующий компонент
+        if item_index < len(self.aircraft_data[aircraft_type]['components']):
+            # Преобразуем обратно в tuple для сохранения структуры данных
+            self.aircraft_data[aircraft_type]['components'][item_index] = tuple(new_values)
 
     def create_comparison_tab(self, parent):
         comparison_frame = ttk.LabelFrame(parent, text="Сравнение времени восстановления самолетов")
@@ -299,7 +410,7 @@ class AircraftMaintenanceCalculator:
         t_B = (1/n) * Σ τ_B_i
         Доверительные границы рассчитываются по логарифмически нормальному распределению
 
-        КВАНИТИЛИ НОРМАЛЬНОГО РАСПРЕДЕЛЕНИЯ:
+        КВАНИТИЛИ НОРМАЛЬНОО РАСПРЕДЕЛЕНИЯ:
         β: 0.80, 0.90, 0.95, 0.975, 0.990, 0.995, 0.9975, 0.999
         u_γ: 0.842, 1.282, 1.645, 1.960, 2.326, 2.576, 2.807, 3.090
         """
