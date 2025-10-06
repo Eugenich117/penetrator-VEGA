@@ -11,6 +11,7 @@ import multiprocessing
 from multiprocessing import Queue, Pipe
 import random
 import bisect
+import sys
 # мат модель из книжки воронцова упрощенная
 
 
@@ -141,7 +142,78 @@ def Get_ro(R): # В основной функции всё в метрах, в �
     return ro
 
 
-def Cx(xi, V_sound):
+def Cx(r1, r2, Long_penetrator, S, xi, V_sound, Qk, alpha_rad):
+    M = xi/V_sound
+    # Базовое значение Cx в зависимости от режима
+    #Cxa = ((2 * Long_penetrator * r2 * (1 + r1 / r2)) ) * (m.pi * np.tan(Qk) / 2) * (2 * np.cos(0) ** 2 * np.sin(Qk) ** 2 + np.sin(0) ** 2 * np.cos(Qk) ** 2)# тут можно попробовать убрать S
+
+    '''# Поправочный коэффициент для числа Маха
+    if M < 0.8:
+        # Дозвуковой режим - медленный рост
+        return Cxa * 0.7 + 0.3 * (M / 0.8)
+
+    elif M < 1.0:
+        # Трансзвуковой - резкий рост (волновой кризис)
+        x = (M - 0.8) / 0.2  # Нормировка от 0 до 1
+        return Cxa * 1.0 + 2.5 * x ** 2 * (1 + 0.5 * np.sin(2 * np.pi * x))
+
+    elif M < 1.5:
+        # Сверхзвуковой - пик и спад
+        x = (M - 1.0) / 0.5
+        peak = 1.8 - 0.1 * Qk / 15  # Пик зависит от угла конуса
+        return Cxa * peak * np.exp(-0.8 * x ** 1.5)
+
+    elif M < 3.0:
+        # Сверхзвуковой - постепенное уменьшение
+        return Cxa * 1.2 * (1.5 / M) ** 0.4 * (1 + 0.15 * np.log(M / 1.5))
+
+    else:
+        # Гиперзвуковой режим - медленный рост
+        return Cxa * 0.9 * (3.0 / M) ** 0.2 * (1 + 0.1 * (M - 3.0)) # (2.1/(xi/V_sound)) * Qk#'''
+    # 1. Дозвуковой режим (M < 0.8)
+    if M < 0.8:
+        # Сопротивление формы + сопротивление трения
+        Cx_form = 0.8 * m.sin(Qk) ** 2
+        # Оценка сопротивления трения (упрощенно)
+        Re_approx = 1e6  # Примерное число Рейнольдса
+        Cx_friction = 0.074 / Re_approx ** 0.2 * (Long_penetrator / (2 * r2))
+        Cx_base = Cx_form + Cx_friction
+        return min(Cx_base * (0.7 + 0.3 * (M / 0.8)), 1.0)
+
+    # 2. Трансзвуковой режим (0.8 ≤ M < 1.2)
+    elif M < 1.2:
+        # Волновой кризис - резкий рост сопротивления
+        Cx_subsonic = 0.8 * m.sin(Qk) ** 2
+        Cx_supersonic = 2.0 * m.sin(Qk) ** 2 / m.sqrt(M ** 2 - 0.5)
+        # Интерполяция между режимами
+        t = (M - 0.8) / 0.4
+        # Пик сопротивления в районе M=1.0
+        peak_factor = 1.0 + 2.0 * m.sin(m.pi * (M - 0.9) / 0.2) ** 2
+        return min(Cx_subsonic + (Cx_supersonic - Cx_subsonic) * t * peak_factor, 2.5)
+
+    # 3. Сверхзвуковой режим (1.2 ≤ M < 5.0)
+    elif M < 5.0:
+        # Теория конических течений
+        beta = m.sqrt(M ** 2 - 1)
+        # Коэффициент давления на поверхности конуса
+        Cp_cone = 2.0 * m.sin(Qk) ** 2 / beta
+        # Пересчет в коэффициент сопротивления
+        Cx_pressure = Cp_cone * m.sin(Qk)
+        # Поправка на трение
+        Cx_friction = 0.03 / (M * 1e6) ** 0.2 * (Long_penetrator / (2 * r2))
+        return min(Cx_pressure + Cx_friction, 1.5)
+
+    # 4. Гиперзвуковой режим (M ≥ 5.0)
+    else:
+        # Модифицированная теория Ньютона
+        Cx_newton = 2.0 * m.sin(Qk) ** 2
+        # Поправка на сжатие воздуха
+        gamma = 1.4  # Показатель адиабаты
+        compression_factor = 1.0 + 0.5 / (gamma * M ** 2 * m.sin(Qk) ** 2)
+        return min(Cx_newton * compression_factor, 2.0)
+
+
+'''def Cx(xi, V_sound): # интерполяция идеально работает
     x = [0, 0, 0.2, 0.4, 0.6, 0.1, 1.2, 1.4, 1.8, 2, 2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 6, 7, 8, 9, 10, 11,
          12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67]
@@ -150,7 +222,7 @@ def Cx(xi, V_sound):
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52,
          1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52, 1.52]
-    return newton_interpolation(x, y, xi/V_sound)
+    return newton_interpolation(x, y, xi/V_sound)'''
 
 
 def Cx_wind(xi, V_sound):
@@ -179,7 +251,6 @@ def v_sound(R):
 
 
 start_time = time.time()
-# d = 0.6
 mass = 120
 h = 125_000
 mass_planet = 4.867 * 10 ** 24
@@ -199,7 +270,13 @@ cToRad = m.pi / 180
 
 R = Rb + h
 dV = 0
-Qk_list = [43 * cToDeg, 57 * cToDeg, 65 * cToDeg, 77 * cToDeg, 90 * cToDeg]
+Qk_start = 10
+Qk_list = [10 * cToRad] #r2 должен быть минимум 10см
+for i in range(180): #19
+    Qk_start += 0.25 #1.75#
+    Qk_list.append(Qk_start * cToRad)
+
+
 def sign(x):
     if x > 0:
         return 1
@@ -207,6 +284,7 @@ def sign(x):
         return -1
     else:
         return 0
+
 
 def dV_func(initial):
     S=initial['S']
@@ -224,6 +302,7 @@ def dV_func(initial):
     dV=(-mass*(g*Rb**2/R**2)*m.sin(tetta)-(0.5*ro*V**2*Cxa*S)+sign(V_wind_x)*(0.5*ro*V_wind_x**2*Cxa_wind*S))/mass
     return dV, 'V'
 
+
 def dL_func(initial):
     V=initial['V']
     tetta=initial['tetta']
@@ -234,6 +313,7 @@ def dL_func(initial):
     dL=m.sqrt(V**2+V_wind_z**2)*Rb/R*m.cos(tetta)
     return dL, 'L'
 
+
 def dtetta_func(initial):
     V=initial['V']
     tetta=initial['tetta']
@@ -243,6 +323,7 @@ def dtetta_func(initial):
     dtetta=((-(g*Rb**2/R**2)*m.cos(tetta))/m.sqrt(V**2+V_wind**2)+(m.sqrt(V**2+V_wind**2)/R))
     #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
     return dtetta, 'tetta'
+
 
 def dR_func(initial):
     V=initial['V']
@@ -290,46 +371,55 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
 
 
 def runge_kutta_4(equations, initial, dt, dx):
-    '''equations - это список названий функций с уравнениями для системы
-    initial это переменные с начальными условиями
-    dx - это список переменных, которые будут использованы для интегрирования уравнения'''
-    k1 = {key: 0 for key in initial.keys()}
-    k2 = {key: 0 for key in initial.keys()}
-    k3 = {key: 0 for key in initial.keys()}
-    k4 = {key: 0 for key in initial.keys()}
+    k1 = {key: 0 for key in dx}
+    k2 = {key: 0 for key in dx}
+    k3 = {key: 0 for key in dx}
+    k4 = {key: 0 for key in dx}
 
-    derivatives_1 = {key: initial[key] for key in initial}
-    derivatives_2 = {key: initial[key] for key in initial}
-    derivatives_3 = {key: initial[key] for key in initial}
-    derivatives_4 = {key: initial[key] for key in initial}
-
-    new_values = [0] * len(equations)
-
-    for i, eq in enumerate(equations):
+    # k1
+    for eq in equations:
         derivative, key = eq(initial)
-        k1[key] += derivative
-        derivatives_1[key] = initial[key] + derivative * dt / 2
-        derivatives_1[dx[i]] += dt / 2
-        # derivatives_1 = {key: value / 2 for key, value in derivatives_1.items()}
+        if key in dx:
+            k1[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_1)
-        k2[key] += derivative
-        derivatives_2[key] = initial[key] + derivative * dt / 2
-        derivatives_2[dx[i]] += dt / 2
-        # derivatives_2 = {key: value / 2 for key, value in derivatives_2.items()}
+    # k2
+    state_k2 = initial.copy()
+    for key in dx:
+        state_k2[key] += dt / 2 * k1[key]
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_2)
-        k3[key] += derivative
-        derivatives_3[key] = initial[key] + derivative * dt
-        derivatives_3[dx[i]] += dt
+    for eq in equations:
+        derivative, key = eq(state_k2)
+        if key in dx:
+            k2[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_3)
-        k4[key] += derivative
-        derivatives_4[key] = initial[key] + derivative * dt
-        new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
+    # k3
+    state_k3 = initial.copy()
+    for key in dx:
+        state_k3[key] += dt / 2 * k2[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k3)
+        if key in dx:
+            k3[key] = derivative
+
+    # k4
+    state_k4 = initial.copy()
+    for key in dx:
+        state_k4[key] += dt * k3[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k4)
+        if key in dx:
+            k4[key] = derivative
+
+    # итоговое обновление только для переменных из dx
+    new_values = []
+    for key in dx:
+        new_val = initial[key] + (dt / 6) * (
+                k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key]
+        )
+        new_values.append(new_val)
+
     return new_values
 
 
@@ -337,29 +427,39 @@ def runge_kutta_4(equations, initial, dt, dx):
 def compute_trajectory(i, equations, dx, pipe_conn):
     #print(f"поток {i} запущен")
     t = 0
-    L, r1, r2 = 0.53, 0.2, 0.8
-    d = 0.8
+    xd = 0.06
     Qk = Qk_list[i]
-    S = (m.pi * d ** 2) / 4
+    Long_penetrator = 0.53
+    r1 = 0.01
+    r2 = r1 + Qk * Long_penetrator
+    #d = 0.8
+    S = m.pi * r2 **2
     V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-25, -15) * cToRad, Rb + h, 0
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
+    #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
     initial = {}
     initial['S'] = S
     initial['mass'] = mass
     next_update_time, V_wind, wind_angle = -1, 0, 0
     local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
-    local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
+    local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []; local_CX = []; local_CY = []
+    local_MAH = []
 
     while R >= Rb:
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
-        Cxa = ((2 * L * r2 * (1 + r1 / r2)) / S) * (np.tan(Qk) / 2) * (2 * np.cos(0.3) ** 2 * np.sin(Qk) ** 2 + np.sin(0.3) ** 2 * np.cos(Qk) ** 2) #Cx(V, V_sound)
-        print(Cxa)
+
+        Cxa = Cx(r1, r2, Long_penetrator, S, V, V_sound, Qk, wind_angle) #усложненный с зависимостью от скорости
+        #Cxa = Cx(V, V_sound, Qk, wind_angle) #для упрощенного варианта расчета
+        #Cxa = ((2 * Long_penetrator * r2 * (1 + r1 / r2)) / S) * (m.pi * np.tan(Qk) / 2) * (2 * np.cos(0) ** 2 * np.sin(Qk) ** 2 + np.sin(0) ** 2 * np.cos(Qk) ** 2)
+        #Cxa = Cx(V, V_sound) # старый вариант
         Cxa_wind = Cx_wind(V, V_sound)
+        Cya = ((2 * Long_penetrator * r2 * (1 + r1 / r2)) / S) * m.pi * m.cos(0) * m.sin(0) * m.cos(Qk) * m.cos(Qk)
+        gamma = 0.0009  # для баллистического сделать 0
+        alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # для баллистического сделать 0
+        Cxa = Cxa * m.cos(alfa) + Cya * m.sin(alfa)
         Px = mass / Cxa * S
-        # V, tetta, R, L = runge_kutta_6(S, L, Cxa, ro, V, tetta, R, dt)
-        initial.update({ 'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
+        initial.update({'V_wind': V_wind, 'wind_angle': wind_angle, 'tetta': tetta, 'Cxa': Cxa,
                 'Cxa_wind': Cxa_wind, 'ro': ro, 'L': L, 'V': V, 'R': R})
 
         values = runge_kutta_4(equations, initial, dt, dx)
@@ -368,6 +468,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         tetta = values[2]
         R = values[3]
         t += dt
+        local_MAH.append(V/V_sound)
         local_wind_angle.append(wind_angle)
         local_v_wind.append(V_wind)
         local_TETTA.append(tetta * cToDeg)
@@ -378,15 +479,16 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_napor.append(0.5 * ro * V ** 2)
         local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
         local_PX.append(Px)
+        local_CX.append(Cxa)
         #print(f"Process {i} finished, data: TETTA={TETTA[i]}\n, X={X[i]}\n, Y={Y[i]}\n")  # Вывод для проверки данных
 
-    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}')
+    print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, t = {t:.3f}, Qk = {Qk * cToDeg:.3f}, r2 = {r2:.3f}')
 
     for j in range(1, len(local_V_MOD)):
         derivative_value = (local_V_MOD[j] - local_V_MOD[j - 1]) / dt
         local_acceleration.append(derivative_value)
     result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration,
-              local_v_wind, local_wind_angle)
+              local_v_wind, local_wind_angle, local_CX, local_CY, local_MAH)
     pipe_conn.send(result)  # Передаем данные
     pipe_conn.close()  # Закрываем трубу
     #queue.put(result, block=False)
@@ -394,7 +496,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 5
+    iter = len(Qk_list)
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -431,29 +533,33 @@ if __name__ == '__main__':
     V_MOD = ([[] for _ in range(iter)])
     V_WIND = ([[] for _ in range(iter)])
     WIND_ANGLE = ([[] for _ in range(iter)])
-
-    queue = Queue(maxsize=100)
+    CX = ([[] for _ in range(iter)])
+    CY = ([[] for _ in range(iter)])
+    MAH = ([[] for _ in range(iter)])
+    queue = Queue(maxsize=1000)
     processes = []
     parent_conns = []
     child_conns = []
 
-    for i in range(5):
-        parent_conn, child_conn = Pipe()  # Создаем пару для каждого процесса
+    tasks = []
+
+    for i in range(iter):
+        parent_conn, child_conn = multiprocessing.Pipe()  # Создаем пару для каждого процесса
         parent_conns.append(parent_conn)
         child_conns.append(child_conn)
-        p = multiprocessing.Process(target=compute_trajectory, args=(i, equations, dx, child_conn))
-        p.start()
-        processes.append(p)
+        tasks.append((i, equations, dx, child_conn))
 
-    '''results = []
-    while not queue.empty():
-        results.append(queue.get())'''
+    pool = multiprocessing.Pool(processes=30)#multiprocessing.cpu_count()
+
+    # Запускаем задачи асинхронно с отслеживанием завершения
+    for task in tasks:
+        pool.apply_async(compute_trajectory, task)
 
     # Обработка результатов
-    for i in range(5):
+    for i in range(iter):
         result = parent_conns[i].recv()
         (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-             local_acceleration, local_v_wind, local_wind_angle) = result
+             local_acceleration, local_v_wind, local_wind_angle, local_CX, local_CY, local_MAH) = result
         TETTA[i] = local_TETTA
         X[i] = local_X
         Y[i] = local_Y
@@ -465,8 +571,11 @@ if __name__ == '__main__':
         acceleration[i] = local_acceleration
         V_WIND[i] = local_v_wind
         WIND_ANGLE[i] = local_wind_angle
+        CX[i] = local_CX
+        CY[i] = local_CY
+        MAH[i] = local_MAH
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Траектории спуска зонда-пенетратора', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
@@ -476,90 +585,123 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], Y[i], label=f'Вариант {i+1}')
     plt.title('Зависимость высоты от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], V_MOD[i], label=f'Вариант {i+1}')
     plt.title('Зависимость модуля скорости от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Время, c", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(Y[i], V_MOD[i], label=f'Вариант {i+1}')
     plt.title('Зависимость модуля скорости от высоты', fontsize=16, fontname='Times New Roman')
     plt.xlabel("Высота, м", fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скорость, $\frac{м}{с}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], TETTA[i], label=f'Вариант {i+1}')
     plt.title('Зависимость угла входа от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, c', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Траекторный угол, град', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         plt.plot(T[i], napor[i], label=f'Вариант {i+1}')
     plt.title('Зависимость скоростного напора от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Скоростной напор, $\frac{\mathrm{кг}}{\mathrm{м} \cdot \mathrm{с}^{2}}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.25, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
     #T.pop()# Убираем последний элемент из списка времени
-    for i in range(5):
+    for i in range(iter):
         T[i].pop()
         plt.plot(T[i], acceleration[i], label=f'Вариант {i+1}')
     plt.title('Зависимость ускорения от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Ускорение м$^2$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         nx[i].pop()
         plt.plot(T[i], nx[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость перегрузки от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Перегрузка, g', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 
-    for i in range(5):
+    for i in range(iter):
         PX[i].pop()
         plt.plot(T[i], PX[i], label=f'Вариант {i + 1}')
     plt.title('Зависимость давления на мидель от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Px, $\frac{кг}{м^2}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
+
+    for i in range(iter):
+        CX[i].pop()
+        plt.plot(T[i], CX[i], label=f'Вариант {i+1}')
+    plt.title('Зависимость CX от времени', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
+    plt.ylabel('Cx', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    #plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    for i in range(iter):
+        MAH[i].pop()
+        plt.plot(MAH[i], CX[i], label=f'Вариант {i+1}')
+    plt.title('Зависимость CX от М', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Мах', fontsize=16, fontname='Times New Roman')
+    plt.ylabel('Cx', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    #plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    '''for i in range(5):
+        plt.plot(T[i], CY[i], label=f'Вариант {i+1}')
+    plt.title('Зависимость CY от времени', fontsize=16, fontname='Times New Roman')
+    plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
+    plt.ylabel('Cy', fontsize=16, fontname='Times New Roman')
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
+    plt.legend()
+    plt.grid(True)
+    plt.show()'''
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(elapsed_time)
+    sys.exit()

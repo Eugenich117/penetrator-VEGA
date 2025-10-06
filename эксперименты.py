@@ -143,3 +143,7 @@ cbar.set_label('Взлётная масса (кг)', rotation=270, labelpad=15)
 
 plt.tight_layout()
 plt.show()
+
+
+
+

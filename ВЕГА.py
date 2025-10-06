@@ -18,7 +18,7 @@ h = 125_000
 mass_planet = 4.867*10**24
 Rb = 6_051_800
 gravy_const = 6.67*10**(-11)
-g = 8.87
+g = 8.871
 """дистанция, угол входа, скорость gamma не """
 L = 0
 tetta = -19  # * (m.pi / 180)
@@ -228,6 +228,7 @@ def dL_func(initial):
 
 def dtetta_func(initial):
     """вычисление угла наклона таектории"""
+    g = 8.871
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']

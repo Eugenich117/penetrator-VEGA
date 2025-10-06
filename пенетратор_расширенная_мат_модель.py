@@ -465,7 +465,7 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
     bounds = [0, 2_000, 6_000, 10_000, 18_000, 28_000, 36_000, 42_000, 48_000,
               55_000, 61_000, 68_000, 76_000, 85_000, 94_000, 100_000, float('inf')]
 
-    #Функциидлявычисленияv_windвзависимостиотдиапазона
+    #Функции для вычисления v_wind в зависимости от диапазона
     actions=[
         lambda: random.uniform(0, 3),  # 0 - 2 км
         lambda: random.uniform(3, 7),  # 2 - 6 км
@@ -494,6 +494,7 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
         next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
 
     if h >= 50_000:
+        #wind_angle = random.uniform((0), (0))# если убрать угол в 0, то оно будет лететь прямо
         wind_angle = random.uniform((-m.pi / 6), (m.pi / 6))
     return V_wind, wind_angle, next_update_time
 
@@ -579,11 +580,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
         local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []; local_eps = []
         local_phi = []; local_lam = []
-        Qk, lam, phi, eps = m.pi / 2, 0, 0, 0
+        Qk, lam, phi, eps = m.pi / 4, 0, 0, 0
         next_update_time = -1
         V_wind = 0
         wind_angle = 0
         while R >= Rb:
+            #система уравнений требует доработки, так как есть избыточная реакция на порывы ветра, что дает некорректные вычисления на выходе
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
             omega = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты, рад/с
             location = 'v_sound'
@@ -596,7 +598,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa_wind = Cx_wind(V, V_sound)
 
             Px = mass / Cxa * S
-            Cya = 0.00156 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
+            Cya = 0 #0.00156 #((2 * long * r2 * (1 + r1 / r2)) / S) * np.pi * np.cos(tetta) * np.sin(tetta) * np.cos(Qk) ** 2
             xd = 0.06
             gamma = wind_angle
             alfa = (gamma / xd) * (Cxa / (Cya + Cxa))  # 0
