@@ -306,7 +306,7 @@ while mach > 1.32:
 
     tmich=t
     """этап 1 аэродинамическое торможение"""
-    S, Cn, Fn, mass = 4.52, 0, 0, 1750
+    S, Cn, Fn, mass = 4.52, 0, 0, 1755 #1855 #1750 # оригинальное число 1750
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
@@ -339,7 +339,7 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while mach > 0.74:
     """этап 2 спуск на паращюте увода """
-    S, Cn, Fn, mass = 4.52, 0.65, 6, 1750
+    S, Cn, Fn, mass = 4.52, 0.65, 6, 1755 #1855 #1750 # оригинальное число 1750
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
@@ -373,7 +373,7 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while t <= 71: #было 70 по циклограмме
     """третий этап спуск с верхней полусферой на парашюте увода"""
-    S, Cn, Fn, mass = 4.155, 0.65, 6, 375
+    S, Cn, Fn, mass = 4.155, 0.65, 6, 380 # 480 # 375 # оригинальное число 375
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 1.28
@@ -406,7 +406,7 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while t <= 231: #while mach > 0.14: # # было 220 по циклограмме
     """четвертый этап спуск на стабилизирующем парашюте"""
-    S, Cn, Fn, mass = 2.895, 0.78, 1.5, 120
+    S, Cn, Fn, mass = 2.895, 0.78, 1.5, 125 # 225 #120 #оригинальное число 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58
@@ -436,9 +436,9 @@ mach=V/V_sound
 print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}, Mach={mach:.3f}, {t}')
 
 
-while t <= 400: #while mach > 0.03: # было 400 по циклограмме
+while t <= 3000: #while mach > 0.03: # было 400 по циклограмме
     """пятый этап спуск на парашюте ввода аэростата """
-    S, Cn, Fn, mass= 2.895, 0.97, 35, 120
+    S, Cn, Fn, mass= 2.895, 0.97, 35, 125 # 225 #120 #оригинальное число 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58

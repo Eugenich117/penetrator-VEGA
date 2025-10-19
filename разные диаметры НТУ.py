@@ -185,7 +185,7 @@ cToRad = m.pi / 180
 
 R = Rb + h
 dV = 0
-d_list = [4, 2, 1, 0.8, 0.4]
+d_list = [2, 1, 0.8, 0.4, 0.2]
 
 def dV_func(initial):
     S = initial['S']
@@ -220,46 +220,55 @@ def dR_func(initial):
     return dR, 'R'
 
 def runge_kutta_4(equations, initial, dt, dx):
-    '''equations - это список названий функций с уравнениями для системы
-    initial это переменные с начальными условиями
-    dx - это список переменных, которые будут использованы для интегрирования уравнения'''
-    k1 = {key: 0 for key in initial.keys()}
-    k2 = {key: 0 for key in initial.keys()}
-    k3 = {key: 0 for key in initial.keys()}
-    k4 = {key: 0 for key in initial.keys()}
+    k1 = {key: 0 for key in dx}
+    k2 = {key: 0 for key in dx}
+    k3 = {key: 0 for key in dx}
+    k4 = {key: 0 for key in dx}
 
-    derivatives_1 = {key: initial[key] for key in initial}
-    derivatives_2 = {key: initial[key] for key in initial}
-    derivatives_3 = {key: initial[key] for key in initial}
-    derivatives_4 = {key: initial[key] for key in initial}
-
-    new_values = [0] * len(equations)
-
-    for i, eq in enumerate(equations):
+    # k1
+    for eq in equations:
         derivative, key = eq(initial)
-        k1[key] += derivative
-        derivatives_1[key] = initial[key] + derivative * dt / 2
-        derivatives_1[dx[i]] += dt / 2
-        # derivatives_1 = {key: value / 2 for key, value in derivatives_1.items()}
+        if key in dx:
+            k1[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_1)
-        k2[key] += derivative
-        derivatives_2[key] = initial[key] + derivative * dt / 2
-        derivatives_2[dx[i]] += dt / 2
-        # derivatives_2 = {key: value / 2 for key, value in derivatives_2.items()}
+    # k2
+    state_k2 = initial.copy()
+    for key in dx:
+        state_k2[key] += dt / 2 * k1[key]
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_2)
-        k3[key] += derivative
-        derivatives_3[key] = initial[key] + derivative * dt
-        derivatives_3[dx[i]] += dt
+    for eq in equations:
+        derivative, key = eq(state_k2)
+        if key in dx:
+            k2[key] = derivative
 
-    for i, eq in enumerate(equations):
-        derivative, key = eq(derivatives_3)
-        k4[key] += derivative
-        derivatives_4[key] = initial[key] + derivative * dt
-        new_values[i] = initial[key] + (1 / 6) * dt * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
+    # k3
+    state_k3 = initial.copy()
+    for key in dx:
+        state_k3[key] += dt / 2 * k2[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k3)
+        if key in dx:
+            k3[key] = derivative
+
+    # k4
+    state_k4 = initial.copy()
+    for key in dx:
+        state_k4[key] += dt * k3[key]
+
+    for eq in equations:
+        derivative, key = eq(state_k4)
+        if key in dx:
+            k4[key] = derivative
+
+    # итоговое обновление только для переменных из dx
+    new_values = []
+    for key in dx:
+        new_val = initial[key] + (dt / 6) * (
+                k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key]
+        )
+        new_values.append(new_val)
+
     return new_values
 
 

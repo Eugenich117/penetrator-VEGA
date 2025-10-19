@@ -335,7 +335,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = Cx(V, V_sound)
         Px = mass / Cxa * S
-        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -362,7 +362,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 1.28
         Px = mass / Cxa * S
-        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -389,7 +389,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 0.58
         Px = mass / Cxa * S
-        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]
@@ -416,7 +416,7 @@ for i in range(8):
         ro = Get_ro(R - Rb)
         Cxa = 0.58
         Px = mass / Cxa * S
-        initial.update({'S': S, 'g':g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        initial.update({'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
         values = runge_kutta_4(equations, initial, dt, dx)
         V = values[0]
         L = values[1]

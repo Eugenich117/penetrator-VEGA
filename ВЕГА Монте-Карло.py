@@ -220,14 +220,16 @@ def dV_func(initial):
     V_wind = initial['V_wind']
     wind_angle = initial['wind_angle']
     Cxa_wind = initial['Cxa_wind']
-    V_wind_x = V_wind*m.sin(wind_angle)#Вдольтраектории
+    V_wind_x = V_wind * m.sin(wind_angle)#Вдоль траектории
     Cn = initial['Cn']
     Fn = initial['Fn']
     #dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass #без аэростата
     '''dV = (((ro * g * U * m.sin(tetta)) - mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) -(0.5 * ro * V ** 2 *
         (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # нормальная модель с аэростатом'''
-    dV = ((- mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) -(0.5 * ro * V ** 2 *
-        (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # модель для аэростата монгольфьера'''
+    dV = ((- mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 *
+        (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # модель для аэростата монгольфьера ветер дует в разные стороны'''
+    '''dV = ((- mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 *
+            (Cxa * S + Cn * Fn)) + (0.5 * ro * V_wind_x ** 2 * (Cxa_wind * S + Cn * Fn) * S))) / mass  # модель для аэростата монгольфьера ветер дует только в одну сторону'''
     return dV, 'V'
 
 def dL_func(initial):
@@ -249,7 +251,7 @@ def dtetta_func(initial):
 
     '''dtetta = (((ro * (1 - (330 / 176)) * U * (g * Rb ** 2 / R ** 2) * m.cos(tetta)) - (g * Rb ** 2 / R ** 2) * m.cos(tetta)) / m.sqrt(V ** 2 + V_wind ** 2) + (
                 m.sqrt(V ** 2 + V_wind ** 2) / R)) # модель для аэростата монгольфьера'''
-    dtetta = (( - (g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R))# нормальная модель с аэростатом
+    dtetta = ( - (g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R)# нормальная модель с аэростатом
     #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
     return dtetta, 'tetta'
 
@@ -259,7 +261,7 @@ def dR_func(initial):
     V_wind = initial['V_wind']
     wind_angle = initial['wind_angle']
 
-    V_wind = V_wind * m.cos(wind_angle)#Вдольтраектории
+    V_wind = V_wind * m.cos(wind_angle)
     dR = (m.sqrt(V**2 + V_wind**2) * m.sin(tetta))
     return dR, 'R'
 
@@ -292,9 +294,11 @@ def wind(h, t, next_update_time, V_wind, wind_angle):
 
     if t >= next_update_time:
         V_wind = actions[index]()  # Генерируем новую скорость ветра
-        wind_angle = random.uniform(0, m.pi)  # Генерируем новый угол ветра
+        wind_angle = random.uniform(0, m.pi/2)  # Генерируем новый угол ветра
+        #wind_angle = m.pi / 2 #random.uniform((-m.pi / 24), (m.pi / 24))
         wind_timer = random.uniform(0.2, 10)  # Случайный таймер
         next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+
     return V_wind, wind_angle, next_update_time
 
 
@@ -360,10 +364,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         d = 0.8
         S = (m.pi * d ** 2) / 4
         V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-21, -17) * cToRad, Rb + h, 0
-        print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
+        #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
         initial = {}
         initial['S'] = S
-        initial['mass'] = 1855
+        initial['mass'] = 1755 #1855
 
         local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
         local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
@@ -373,9 +377,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
         while mach > 1.32:
-            S, Cn, Fn, mass = 4.52, 0, 0, 1750
+            S, Cn, Fn, mass = 4.52, 0, 0, 1755 # 1855 #
             """этап 1 аэродинамическое торможение"""
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -412,12 +416,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
-        print(f' 1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
+        #print(f' 1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while mach > 0.74:
             """этап 2 спуск на парашюте увода """
-            S, Cn, Fn, mass = 4.52, 0.65, 6, 1750
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            S, Cn, Fn, mass = 4.52, 0.65, 6, 1755 #1855 #
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -450,12 +454,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
-        print(f' 2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
+        #print(f' 2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while t <= 71:  # было 70 по циклограмме
             """третий этап спуск с верхней полусферой на парашюте увода"""
-            S, Cn, Fn, mass = 4.155, 0.65, 6, 375
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            S, Cn, Fn, mass = 4.155, 0.65, 6, 380 #480 #
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -487,12 +491,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
-        print(f' 3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
+        #print(f' 3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while t <= 231:  # while mach > 0.14: # # было 220 по циклограмме
             """четвертый этап спуск на стабилизирующем парашюте"""
-            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 120
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 125 # 225 #
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -524,12 +528,12 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
-        print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
+        #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while t <= 400:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
-            S, Cn, Fn, mass = 2.895, 0.97, 35, 120
-            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
+            S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
+            V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
             location = 'ro'
@@ -599,7 +603,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
 
 if __name__ == '__main__':
-    iter = 30 #количество итераций
+    iter = 100 #количество итераций
     dx = ['V', 'L', 'tetta', 'R']
     equations = [dV_func, dL_func, dtetta_func, dR_func]
     #with multiprocessing.Manager() as manager:
@@ -686,6 +690,176 @@ if __name__ == '__main__':
         acceleration[i] = local_acceleration
         WIND_ANGLE[i] = local_wind_angle
         V_WIND[i] = local_v_wind
+
+    print("\n" + "=" * 80)
+    print("ПРОВЕРКА КОРРЕКТНОСТИ ДАННЫХ ДЛЯ ВСЕХ ПЕРЕМЕННЫХ")
+    print("=" * 80)
+
+    # СОБИРАЕМ ПОСЛЕДНИЕ ЗНАЧЕНИЯ ДО ЛЮБЫХ МАНИПУЛЯЦИЙ
+    last_values = {}
+
+    # Переменные, которые НЕ делают pop() - берем последний элемент
+    last_values['TETTA'] = [lst[-1] for lst in TETTA if len(lst) > 0]
+    last_values['X'] = [lst[-1] for lst in X if len(lst) > 0]
+    last_values['Y'] = [lst[-1] for lst in Y if len(lst) > 0]
+    last_values['V_MOD'] = [lst[-1] for lst in V_MOD if len(lst) > 0]
+    last_values['napor'] = [lst[-1] for lst in napor if len(lst) > 0]
+
+    # Переменные, которые делают pop() в графиках - берем последний элемент ДО pop()
+    last_values['T'] = [lst[-1] for lst in T if len(lst) > 0]  # Берем до T.pop()
+    last_values['PX'] = [lst[-1] for lst in PX if len(lst) > 0]  # Берем до PX.pop()
+    last_values['nx'] = [lst[-1] for lst in nx if len(lst) > 0]  # Берем до nx.pop()
+    last_values['acceleration'] = [lst[-1] for lst in acceleration if len(lst) > 0]  # Берем до acceleration.pop()
+    last_values['V_WIND'] = [lst[-1] for lst in V_WIND if len(lst) > 0]  # Берем до V_WIND.pop()
+    last_values['WIND_ANGLE'] = [lst[-1] for lst in WIND_ANGLE if len(lst) > 0]  # Берем до WIND_ANGLE.pop()
+
+    # ПРОВЕРКА ДЛИН МАССИВОВ
+    print("Проверка длин исходных массивов:")
+    for var_name in ['TETTA', 'X', 'Y', 'V_MOD', 'T', 'napor', 'PX', 'nx', 'acceleration', 'V_WIND', 'WIND_ANGLE']:
+        if var_name in locals():
+            lengths = [len(lst) for lst in eval(var_name) if len(lst) > 0]
+            if lengths:
+                print(f"  {var_name}: {len(lengths)} реализаций, длины: {set(lengths)}")
+            else:
+                print(f"  {var_name}: нет данных")
+
+    # ПРОВЕРКА КОРРЕКТНОСТИ ПОСЛЕДНИХ ЗНАЧЕНИЙ
+    print(f"\nПроверка последних значений для ключевых переменных:")
+    print("=" * 80)
+
+    # Проверяем диапазоны значений для каждой переменной
+    check_variables = {
+        'TETTA': (-95, -85, "°"),  # Ожидаемый диапазон угла
+        'Y': (0, 100, "м"),  # Высота в конце (должна быть близка к 0)
+        'V_MOD': (0, 10, "м/с"),  # Скорость в конце
+        'X': (0, 50000, "м"),  # Дальность
+        'napor': (0, 1000, "Па"),  # Скоростной напор
+        'acceleration': (-50, 50, "м/с²")  # Ускорение
+    }
+
+    for var_name, (expected_min, expected_max, unit) in check_variables.items():
+        if var_name in last_values and last_values[var_name]:
+            values = last_values[var_name]
+            actual_min = min(values)
+            actual_max = max(values)
+            actual_mean = np.mean(values)
+
+            print(f"\n{var_name} ({unit}):")
+            print(f"  Ожидаемый диапазон: [{expected_min}, {expected_max}]")
+            print(f"  Фактический диапазон: [{actual_min:.2f}, {actual_max:.2f}]")
+            print(f"  Мат. ожидание: {actual_mean:.2f}")
+
+            # Проверяем, попадают ли значения в ожидаемый диапазон
+            if actual_min < expected_min or actual_max > expected_max:
+                print(f"  ⚠️  ВНИМАНИЕ: значения выходят за ожидаемый диапазон!")
+
+            # Проверяем первые 5 значений
+            print(f"  Первые 5 значений: {[f'{v:.2f}' for v in values[:5]]}")
+
+    # ДЕТАЛЬНАЯ ПРОВЕРКА TETTA
+    print(f"\n" + "=" * 80)
+    print("ДЕТАЛЬНАЯ ПРОВЕРКА TETTA:")
+    print("=" * 80)
+
+    if 'TETTA' in last_values and last_values['TETTA']:
+        tetta_values = last_values['TETTA']
+        print(f"Количество реализаций: {len(tetta_values)}")
+        print(f"Диапазон значений: от {min(tetta_values):.2f}° до {max(tetta_values):.2f}°")
+        print(f"Мат. ожидание: {np.mean(tetta_values):.2f}°")
+        print(f"Медиана: {np.median(tetta_values):.2f}°")
+
+        # Анализ распределения
+        below_85 = len([v for v in tetta_values if v < -85])
+        below_80 = len([v for v in tetta_values if v < -80])
+
+        print(f"Значения < -85°: {below_85}/{len(tetta_values)} ({below_85 / len(tetta_values) * 100:.1f}%)")
+        print(f"Значения < -80°: {below_80}/{len(tetta_values)} ({below_80 / len(tetta_values) * 100:.1f}%)")
+
+        # Выводим все значения TETTA для анализа
+        print(f"\nВсе значения TETTA:")
+        for i, val in enumerate(tetta_values):
+            print(f"  Реализация {i:3d}: {val:7.2f}°")
+
+    # ПРОВЕРКА СОГЛАСОВАННОСТИ ДАННЫХ
+    print(f"\n" + "=" * 80)
+    print("ПРОВЕРКА СОГЛАСОВАННОСТИ ДАННЫХ:")
+    print("=" * 80)
+
+    # Проверяем, что все переменные имеют одинаковое количество реализаций
+    counts = {var: len(values) for var, values in last_values.items() if values}
+    if len(set(counts.values())) > 1:
+        print("⚠️  РАЗНОЕ КОЛИЧЕСТВО РЕАЛИЗАЦИЙ:")
+        for var, count in counts.items():
+            print(f"  {var}: {count}")
+    else:
+        print(f"✅ Все переменные имеют одинаковое количество реализаций: {list(counts.values())[0]}")
+
+    # ПРОВЕРКА ФИЗИЧЕСКОЙ КОРРЕКТНОСТИ
+    print(f"\n" + "=" * 80)
+    print("ПРОВЕРКА ФИЗИЧЕСКОЙ КОРРЕКТНОСТИ:")
+    print("=" * 80)
+
+    # Проверяем физическую осмысленность конечных состояний
+    if 'Y' in last_values and 'V_MOD' in last_values:
+        y_values = last_values['Y']
+        v_values = last_values['V_MOD']
+
+        # Высота должна быть неотрицательной
+        negative_height = len([y for y in y_values if y < 0])
+        if negative_height > 0:
+            print(f"⚠️  Обнаружена отрицательная высота в {negative_height} реализациях")
+
+        # Скорость при посадке должна быть небольшой
+        high_speed_landing = len([v for v in v_values if v > 20])  # Более 20 м/с при посадке
+        if high_speed_landing > 0:
+            print(f"⚠️  Высокая скорость посадки (>20 м/с) в {high_speed_landing} реализациях")
+
+    # ВИЗУАЛИЗАЦИЯ РАСПРЕДЕЛЕНИЙ ВСЕХ ПЕРЕМЕННЫХ
+    try:
+        print(f"\nСоздание диагностических графиков...")
+
+        variables_to_plot = [var for var in last_values.keys() if last_values[var]]
+        n_vars = len(variables_to_plot)
+
+        if n_vars > 0:
+            n_cols = 3
+            n_rows = (n_vars + n_cols - 1) // n_cols
+
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, 5 * n_rows))
+            if n_vars == 1:
+                axes = [axes]
+            else:
+                axes = axes.flatten()
+
+            for i, var_name in enumerate(variables_to_plot):
+                if i < len(axes):
+                    values = last_values[var_name]
+
+                    axes[i].hist(values, bins=15, alpha=0.7, color='skyblue', edgecolor='black')
+                    axes[i].axvline(np.mean(values), color='red', linestyle='-', linewidth=2,
+                                    label=f'Среднее: {np.mean(values):.3f}')
+                    axes[i].axvline(np.median(values), color='orange', linestyle='--', linewidth=2,
+                                    label=f'Медиана: {np.median(values):.3f}')
+
+                    axes[i].set_title(f'{var_name}\n(n={len(values)})', fontsize=12)
+                    axes[i].set_xlabel('Значение')
+                    axes[i].set_ylabel('Частота')
+                    axes[i].legend()
+                    axes[i].grid(True, alpha=0.3)
+
+            # Скрываем пустые subplots
+            for i in range(len(variables_to_plot), len(axes)):
+                axes[i].set_visible(False)
+
+            plt.tight_layout()
+            plt.show()
+
+    except Exception as e:
+        print(f"Ошибка при построении диагностических графиков: {e}")
+
+    print(f"\n" + "=" * 80)
+    print("ДИАГНОСТИКА ЗАВЕРШЕНА")
+    print("=" * 80)
 
     for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
@@ -882,6 +1056,44 @@ if __name__ == '__main__':
     #plt.legend()
     plt.grid(True)
     plt.show()
+
+    print("\n" + "=" * 80)
+    print("ФИНАЛЬНЫЕ СТАТИСТИКИ ПОСЛЕДНИХ ЗНАЧЕНИЙ")
+    print("=" * 80)
+
+
+    def calculate_final_stats(values, variable_name):
+        """Рассчитывает статистики для последних значений"""
+        if not values:
+            return None
+
+        values_array = np.array(values)
+
+        return {
+            'mean': np.mean(values_array),
+            'variance': np.var(values_array, ddof=1),
+            'std': np.std(values_array, ddof=1),
+            'min': np.min(values_array),
+            'max': np.max(values_array),
+            'median': np.median(values_array),
+            'count': len(values)
+        }
+
+
+    # Выводим финальные статистики
+    print(
+        f"{'Переменная':<15} {'Мат.ожидание':<15} {'Дисперсия':<15} {'СКО':<15} {'Min':<12} {'Max':<12} {'Реализаций':<10}")
+    print("-" * 100)
+
+    final_stats = {}
+    for var_name in last_values.keys():
+        stats = calculate_final_stats(last_values[var_name], var_name)
+        if stats:
+            final_stats[var_name] = stats
+            print(f"{var_name:<15} {stats['mean']:<15.4f} {stats['variance']:<15.4f} "
+                  f"{stats['std']:<15.4f} {stats['min']:<12.4f} {stats['max']:<12.4f} {stats['count']:<10}")
+
+    print(f"\n✅ Анализ завершен для {len(final_stats)} переменных")
 
     data = {
         "acceleration": acceleration,

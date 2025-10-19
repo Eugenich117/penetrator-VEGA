@@ -429,7 +429,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     t = 0
     xd = 0.06
     Qk = Qk_list[i]
-    Long_penetrator = 0.53
+    Long_penetrator = 0.73
     r1 = 0.01
     r2 = r1 + Qk * Long_penetrator
     #d = 0.8
@@ -581,7 +581,7 @@ if __name__ == '__main__':
     plt.xlabel('Дальность, м', fontsize=16, fontname='Times New Roman')
     plt.ylabel('Высота, м', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)
-    plt.legend()
+    #plt.legend()
     plt.grid(True)
     plt.show()
 

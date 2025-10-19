@@ -5,14 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/ДЗЛ.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Надежность серверной архитектуры.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/системный_анализ_задача_1.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ВЕГА разные компановки.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА разные компановки.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ВЕГА.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/модификация корпуса пенетратора.py" beforeDir="false" afterPath="$PROJECT_DIR$/модификация корпуса пенетратора.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/пенетратор_расширенная_мат_модель.py" beforeDir="false" afterPath="$PROJECT_DIR$/пенетратор_расширенная_мат_модель.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/эксперименты.py" beforeDir="false" afterPath="$PROJECT_DIR$/эксперименты.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/разные диаметры НТУ.py" beforeDir="false" afterPath="$PROJECT_DIR$/разные диаметры НТУ.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,6 +51,7 @@
     &quot;Python.b.executor&quot;: &quot;Run&quot;,
     &quot;Python.calculator.executor&quot;: &quot;Run&quot;,
     &quot;Python.diplom_Yulia.executor&quot;: &quot;Run&quot;,
+    &quot;Python.newapp.executor&quot;: &quot;Run&quot;,
     &quot;Python.optimisation_func.executor&quot;: &quot;Run&quot;,
     &quot;Python.optimize_func.executor&quot;: &quot;Run&quot;,
     &quot;Python.penetrator_optimizator_cuda.executor&quot;: &quot;Run&quot;,
@@ -64,6 +65,7 @@
     &quot;Python.ДЗЛ.executor&quot;: &quot;Run&quot;,
     &quot;Python.Для ВЕГи.executor&quot;: &quot;Run&quot;,
     &quot;Python.Количество времени на восстановление АТ.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Надежность серверной архитектуры.executor&quot;: &quot;Run&quot;,
     &quot;Python.графики скорости.executor&quot;: &quot;Run&quot;,
     &quot;Python.интерполяция 6 степени.executor&quot;: &quot;Run&quot;,
     &quot;Python.модификация корпуса пенетратора.executor&quot;: &quot;Run&quot;,
@@ -102,7 +104,7 @@
     </key>
   </component>
   <component name="RunManager" selected="Python.яметод Лагранжа">
-    <configuration name="Возмущения НУ по Монте-Карло" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="модификация корпуса пенетратора" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="pythonProject" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -116,7 +118,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Возмущения НУ по Монте-Карло.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/модификация корпуса пенетратора.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -149,7 +151,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="модификация корпуса пенетратора" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="Надежность серверной архитектуры" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="pythonProject" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -163,7 +165,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/модификация корпуса пенетратора.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Надежность серверной архитектуры.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -242,9 +244,8 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.Надежность серверной архитектуры" />
       <item itemvalue="Python.яметод Лагранжа" />
-      <item itemvalue="Python.Возмущения НУ по Монте-Карло" />
-      <item itemvalue="Python.модификация корпуса пенетратора" />
       <item itemvalue="Python.ДЗЛ" />
       <item itemvalue="Python.системный_анализ_задача_1" />
       <item itemvalue="Python.optimize_func" />
@@ -253,9 +254,7 @@
       <list>
         <item itemvalue="Python.системный_анализ_задача_1" />
         <item itemvalue="Python.ДЗЛ" />
-        <item itemvalue="Python.модификация корпуса пенетратора" />
         <item itemvalue="Python.optimize_func" />
-        <item itemvalue="Python.Возмущения НУ по Монте-Карло" />
       </list>
     </recent_temporary>
   </component>
@@ -428,6 +427,24 @@
       <workItem from="1759387662732" duration="9000" />
       <workItem from="1759477839956" duration="157000" />
       <workItem from="1759496156103" duration="6878000" />
+      <workItem from="1759772595113" duration="164000" />
+      <workItem from="1759849773174" duration="548000" />
+      <workItem from="1759909062242" duration="6458000" />
+      <workItem from="1760039367109" duration="2896000" />
+      <workItem from="1760173276939" duration="2594000" />
+      <workItem from="1760211015486" duration="13000" />
+      <workItem from="1760350609237" duration="630000" />
+      <workItem from="1760384562184" duration="359000" />
+      <workItem from="1760472967719" duration="16000" />
+      <workItem from="1760475187794" duration="12000" />
+      <workItem from="1760475530819" duration="6000" />
+      <workItem from="1760527409267" duration="5183000" />
+      <workItem from="1760568546015" duration="817000" />
+      <workItem from="1760688590005" duration="3399000" />
+      <workItem from="1760780931116" duration="5855000" />
+      <workItem from="1760795961716" duration="2195000" />
+      <workItem from="1760820959198" duration="12334000" />
+      <workItem from="1760876305074" duration="8000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -589,7 +606,15 @@
       <option name="project" value="LOCAL" />
       <updated>1757608257118</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="добавлен файл для дистанционного зондирования Луны и файл с расширенной мат моделью">
+      <option name="closed" value="true" />
+      <created>1759772744257</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1759772744257</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -624,7 +649,8 @@
     <MESSAGE value="все старые файлы с экспериментами, ничего не менял, добавлена первая версия &quot;Количество времени на восстановление АТ.py&quot;" />
     <MESSAGE value="добавлены самолеты в файле про самолеты и исправлена расширенная мат модель, создан файл по проектированию корпуса пенетратора" />
     <MESSAGE value="добавлена последняя версия программы по времени восстановления АТ" />
-    <option name="LAST_COMMIT_MESSAGE" value="добавлена последняя версия программы по времени восстановления АТ" />
+    <MESSAGE value="добавлен файл для дистанционного зондирования Луны и файл с расширенной мат моделью" />
+    <option name="LAST_COMMIT_MESSAGE" value="добавлен файл для дистанционного зондирования Луны и файл с расширенной мат моделью" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -633,11 +659,6 @@
           <url>file://$PROJECT_DIR$/пенетратор обновленный.py</url>
           <line>327</line>
           <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/ВЕГА разные компановки.py</url>
-          <line>211</line>
-          <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/пенетратор.py</url>
@@ -653,6 +674,7 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$newapp.coverage" NAME="newapp Coverage Results" MODIFIED="1760786896741" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads/Telegram Desktop/ОСНИ" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$venus_height.coverage" NAME="venus_height Coverage Results" MODIFIED="1749632820897" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$diplom_Yulia.coverage" NAME="diplom_Yulia Coverage Results" MODIFIED="1747995802526" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$b.coverage" NAME="b Coverage Results" MODIFIED="1758460347283" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads/Telegram Desktop" />
@@ -662,14 +684,14 @@
     <SUITE FILE_PATH="coverage/penetrator_VEGA$calculator.coverage" NAME="calculator Coverage Results" MODIFIED="1757450942826" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1748727878192" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../УИРС/заказы УИРС/сем 5" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$UAV_venus.coverage" NAME="UAV_venus Coverage Results" MODIFIED="1750509497036" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="модификация корпуса пенетратора Coverage Results" MODIFIED="1759502926108" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="ВЕГА Монте-Карло Coverage Results" MODIFIED="1760876141774" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$optimize_func.coverage" NAME="optimize_func Coverage Results" MODIFIED="1749326859281" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1757929433351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$___1.coverage" NAME="системный_анализ_задача_1 Coverage Results" MODIFIED="1758894805550" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$___1.coverage" NAME="системный_анализ_задача_1 Coverage Results" MODIFIED="1760194640140" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$theory_of_fly.coverage" NAME="theory_of_fly Coverage Results" MODIFIED="1745968062919" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$_.coverage" NAME="оптимизация_пенетратор Coverage Results" MODIFIED="1756588906178" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$___.coverage" NAME="пенетратор_расширенная_мат_модель Coverage Results" MODIFIED="1758279762913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="эксперименты Coverage Results" MODIFIED="1759219775265" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$.coverage" NAME="ВЕГА Coverage Results" MODIFIED="1760875306022" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$optimisation_func.coverage" NAME="optimisation_func Coverage Results" MODIFIED="1748823441518" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Yulia_diplom_variations.coverage" NAME="Yulia_diplom_variations Coverage Results" MODIFIED="1747991520772" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
