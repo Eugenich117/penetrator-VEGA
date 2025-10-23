@@ -13,6 +13,8 @@ import random
 import bisect
 import sqlite3
 import pandas as pd
+from openpyxl import Workbook
+from tkinter import filedialog
 # мат модель из книжки воронцова упрощенная
 
 
@@ -367,7 +369,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
         initial = {}
         initial['S'] = S
-        initial['mass'] = 1755 #1855
+        initial['mass'] = 1855 #1755
 
         local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
         local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
@@ -420,7 +422,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while mach > 0.74:
             """этап 2 спуск на парашюте увода """
-            S, Cn, Fn, mass = 4.52, 0.65, 6, 1755 #1855 #
+            S, Cn, Fn, mass = 4.52, 0.65, 6, 1855 #1755 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -458,7 +460,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while t <= 71:  # было 70 по циклограмме
             """третий этап спуск с верхней полусферой на парашюте увода"""
-            S, Cn, Fn, mass = 4.155, 0.65, 6, 380 #480 #
+            S, Cn, Fn, mass = 4.155, 0.65, 6, 480 #380 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -495,7 +497,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while t <= 231:  # while mach > 0.14: # # было 220 по циклограмме
             """четвертый этап спуск на стабилизирующем парашюте"""
-            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 125 # 225 #
+            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 225 # 125 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -532,7 +534,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while t <= 400:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
-            S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
+            S, Cn, Fn, mass = 2.895, 0.97, 35, 225 #125 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -858,8 +860,60 @@ if __name__ == '__main__':
         print(f"Ошибка при построении диагностических графиков: {e}")
 
     print(f"\n" + "=" * 80)
-    print("ДИАГНОСТИКА ЗАВЕРШЕНА")
-    print("=" * 80)
+
+    # Создаем новую книгу Excel
+    wb = Workbook()
+    step = 100  # Шаг для записи данных
+    headers = ["PX", "Перегрузка", "Ускорение", "Скоростной напор", "Угол входа",
+               "X", "Y", "Скорость", "Время"]  # Список заголовков для данных
+
+    for variant in range(iter):
+        # Создаем новый лист для каждого варианта
+        if variant == 0:
+            ws = wb.active
+            ws.title = f"Вариант {variant + 1}"
+        else:
+            ws = wb.create_sheet(title=f"Вариант {variant + 1}")
+
+        # Записываем заголовки в строку 2
+        for col_num, header in enumerate(headers, start=1):
+            ws.cell(row=2, column=col_num, value=header)
+
+        # Определяем максимальную длину среди массивов данных для текущего варианта
+        max_len = max(len(PX[variant]), len(nx[variant]), len(acceleration[variant]),
+                      len(napor[variant]), len(TETTA[variant]), len(X[variant]), len(Y[variant]),
+                      len(V_MOD[variant]), len(T[variant]))
+        start_row = 3  # Начинаем с первой строки после заголовков
+
+        # Записываем данные массивов в столбцы с заданным шагом
+        for row_num in range(0, max_len, step):
+            if row_num < len(PX[variant]):
+                ws.cell(row=start_row + row_num // step, column=1, value=PX[variant][row_num])
+            if row_num < len(nx[variant]):
+                ws.cell(row=start_row + row_num // step, column=2, value=nx[variant][row_num])
+            if row_num < len(acceleration[variant]):
+                ws.cell(row=start_row + row_num // step, column=3, value=acceleration[variant][row_num])
+            if row_num < len(napor[variant]):
+                ws.cell(row=start_row + row_num // step, column=4, value=napor[variant][row_num])
+            if row_num < len(TETTA[variant]):
+                ws.cell(row=start_row + row_num // step, column=5, value=TETTA[variant][row_num])
+            if row_num < len(X[variant]):
+                ws.cell(row=start_row + row_num // step, column=6, value=X[variant][row_num])
+            if row_num < len(Y[variant]):
+                ws.cell(row=start_row + row_num // step, column=7, value=Y[variant][row_num])
+            if row_num < len(V_MOD[variant]):
+                ws.cell(row=start_row + row_num // step, column=8, value=V_MOD[variant][row_num])
+            if row_num < len(T[variant]):
+                ws.cell(row=start_row + row_num // step, column=9, value=T[variant][row_num])
+
+    # Выбираем путь для сохранения файла
+    file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+
+    if file_path:
+        wb.save(file_path)  # Если путь выбран, сохраняем файл по указанному пути
+        print(f"Данные успешно сохранены в файл: {file_path}")
+    else:
+        print("Сохранение отменено пользователем")
 
     for i in range(iter):
         plt.plot(X[i], Y[i], label=f'Вариант {i+1}')
