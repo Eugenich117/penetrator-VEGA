@@ -5,8 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/системный_анализ_задача_2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,6 +70,7 @@
     &quot;Python.разные диаметры НТУ.executor&quot;: &quot;Run&quot;,
     &quot;Python.реактивный_пенетратор.executor&quot;: &quot;Run&quot;,
     &quot;Python.системный_анализ_задача_1.executor&quot;: &quot;Run&quot;,
+    &quot;Python.системный_анализ_задача_2.executor&quot;: &quot;Run&quot;,
     &quot;Python.тесты функций.executor&quot;: &quot;Run&quot;,
     &quot;Python.эксперименты.executor&quot;: &quot;Run&quot;,
     &quot;Python.яметод Лагранжа.executor&quot;: &quot;Run&quot;,
@@ -97,7 +98,7 @@
       <recent name="C:\Users\zheny\OneDrive\Рабочий стол\xxxxxx\универ\IT\питон самоучение\penetrator&amp;VEGA" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.яметод Лагранжа">
     <configuration name="Надежность серверной архитектуры" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="pythonProject" />
       <option name="ENV_FILES" value="" />
@@ -444,7 +445,8 @@
       <workItem from="1760938459797" duration="44000" />
       <workItem from="1760938543055" duration="245000" />
       <workItem from="1760946040192" duration="4000" />
-      <workItem from="1761214053740" duration="1178000" />
+      <workItem from="1761214053740" duration="1252000" />
+      <workItem from="1761430084078" duration="2922000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -622,7 +624,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760876458649</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="добавлено сохранение в эксель">
+      <option name="closed" value="true" />
+      <created>1761215260275</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1761215260275</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -659,7 +669,8 @@
     <MESSAGE value="добавлена последняя версия программы по времени восстановления АТ" />
     <MESSAGE value="добавлен файл для дистанционного зондирования Луны и файл с расширенной мат моделью" />
     <MESSAGE value="добавлен файл про надежность серверной архитектуры, введены изменения для расчета статиститки в веге монте-карло, сделана конечная версия файла модификации корпуса пенетратора, добавлена первая задачка по системному анализу, все остальное - по-мелочи" />
-    <option name="LAST_COMMIT_MESSAGE" value="добавлен файл про надежность серверной архитектуры, введены изменения для расчета статиститки в веге монте-карло, сделана конечная версия файла модификации корпуса пенетратора, добавлена первая задачка по системному анализу, все остальное - по-мелочи" />
+    <MESSAGE value="добавлено сохранение в эксель" />
+    <option name="LAST_COMMIT_MESSAGE" value="добавлено сохранение в эксель" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -692,6 +703,7 @@
     <SUITE FILE_PATH="coverage/penetrator_VEGA$transmitter.coverage" NAME="transmitter Coverage Results" MODIFIED="1750509061402" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$calculator.coverage" NAME="calculator Coverage Results" MODIFIED="1757450942826" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$Shaposhnikov.coverage" NAME="Shaposhnikov Coverage Results" MODIFIED="1748727878192" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../УИРС/заказы УИРС/сем 5" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$___2.coverage" NAME="системный_анализ_задача_2 Coverage Results" MODIFIED="1761436745711" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$UAV_venus.coverage" NAME="UAV_venus Coverage Results" MODIFIED="1750509497036" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$__.coverage" NAME="ВЕГА Монте-Карло Coverage Results" MODIFIED="1761214790727" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$optimize_func.coverage" NAME="optimize_func Coverage Results" MODIFIED="1749326859281" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
