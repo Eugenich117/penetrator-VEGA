@@ -212,6 +212,11 @@ def sign(x):
         return 0
 
 def dV_func(initial):
+    """
+    ИСПРАВЛЕННОЕ уравнение для изменения скорости
+    Основная ошибка: ветер должен влиять через ОТНОСИТЕЛЬНУЮ СКОРОСТЬ в аэродинамических силах,
+    а не как отдельная сила
+    """
     S = initial['S']
     R = initial['R']
     Cxa = initial['Cxa']
@@ -221,87 +226,159 @@ def dV_func(initial):
     mass = initial['mass']
     V_wind = initial['V_wind']
     wind_angle = initial['wind_angle']
-    Cxa_wind = initial['Cxa_wind']
-    V_wind_x = V_wind * m.sin(wind_angle)#Вдоль траектории
     Cn = initial['Cn']
     Fn = initial['Fn']
-    #dV = (-mass * (g * Rb**2 / R**2) * m.sin(tetta) - (0.5 * ro * V**2 * Cxa * S) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * Cxa_wind * S)) / mass #без аэростата
-    '''dV = (((ro * g * U * m.sin(tetta)) - mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) -(0.5 * ro * V ** 2 *
-        (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # нормальная модель с аэростатом'''
-    dV = ((- mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 *
-        (Cxa * S + Cn * Fn)) + sign(V_wind_x) * (0.5 * ro * V_wind_x**2 * (Cxa_wind * S + Cn * Fn) * S))) / mass # модель для аэростата монгольфьера ветер дует в разные стороны'''
-    '''dV = ((- mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 *
-            (Cxa * S + Cn * Fn)) + (0.5 * ro * V_wind_x ** 2 * (Cxa_wind * S + Cn * Fn) * S))) / mass  # модель для аэростата монгольфьера ветер дует только в одну сторону'''
+
+    # Гравитация
+    g_local = 8.87 * (6051800 / R) ** 2
+
+    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Ветер влияет через ОТНОСИТЕЛЬНУЮ СКОРОСТЬ
+    # Проекция ветра на направление движения
+    V_wind_parallel = V_wind * np.sin(wind_angle)
+
+    # Относительная скорость для аэродинамических сил
+    V_relative = V - V_wind_parallel
+
+    # Сила сопротивления зависит от ОТНОСИТЕЛЬНОЙ скорости
+    drag_force = 0.5 * ro * V_relative ** 2 * (Cxa * S + Cn * Fn)
+
+    # Подъемная сила аэростата (проекция на траекторию)
+    balloon_force = ro * 8.87 * np.sin(tetta)
+
+    # Гравитация (проекция на траекторию)
+    gravity_force = mass * g_local * np.sin(tetta)
+
+    # Суммарная сила
+    total_force = balloon_force - gravity_force - np.sign(V_relative) * drag_force
+
+    # Эффективная масса
+    effective_mass = mass + ro
+
+    dV = total_force / effective_mass
+
     return dV, 'V'
 
-def dL_func(initial):
-    V = initial['V']
-    tetta = initial['tetta']
-    V_wind = initial['V_wind']
-    wind_angle = initial['wind_angle']
-
-    V_wind_z = V_wind * m.cos(wind_angle)#Перпендикулярнотраектории
-    dL = m.sqrt(V**2 + V_wind_z**2) * Rb / R * m.cos(tetta)
-    return dL, 'L'
 
 def dtetta_func(initial):
+    """
+    ИСПРАВЛЕННОЕ уравнение для изменения угла
+    Ветер не должен напрямую влиять на изменение угла
+    """
     V = initial['V']
     tetta = initial['tetta']
     R = initial['R']
-    V_wind = initial['V_wind']
     ro = initial['ro']
+    mass = initial['mass']
 
-    '''dtetta = (((ro * (1 - (330 / 176)) * U * (g * Rb ** 2 / R ** 2) * m.cos(tetta)) - (g * Rb ** 2 / R ** 2) * m.cos(tetta)) / m.sqrt(V ** 2 + V_wind ** 2) + (
-                m.sqrt(V ** 2 + V_wind ** 2) / R)) # модель для аэростата монгольфьера'''
-    dtetta = ( - (g * Rb**2 / R**2) * m.cos(tetta)) / m.sqrt(V**2 + V_wind**2) + (m.sqrt(V**2 + V_wind**2) / R)# нормальная модель с аэростатом
-    #dtetta=(((V**2-((gravy_const*mass_planet)/R**2)*R)/(V*R))*scipy.special.cosdg(tetta))*dt
+    # Гравитация
+    g_local = 8.87 * (6051800 / R) ** 2
+
+    # Подъемная сила аэростата (нормальная составляющая)
+    lift_force = ro * 8.87 * np.cos(tetta)
+
+    # Гравитационная составляющая
+    gravity_component = g_local * np.cos(tetta)
+
+    # Центробежная сила
+    centrifugal = V / R if R > 6051800 else 0
+
+    # Основное уравнение
+    if V > 0.1:
+        dtetta = (lift_force / (mass * V) - gravity_component / V + centrifugal)
+    else:
+        dtetta = centrifugal
+
     return dtetta, 'tetta'
 
-def dR_func(initial):
+
+def dL_func(initial):
+    """
+    ИСПРАВЛЕННОЕ уравнение для изменения дальности
+    Ветер влияет на горизонтальное движение через снос
+    """
     V = initial['V']
     tetta = initial['tetta']
     V_wind = initial['V_wind']
     wind_angle = initial['wind_angle']
+    R = initial['R']
 
-    V_wind = V_wind * m.cos(wind_angle)
-    dR = (m.sqrt(V**2 + V_wind**2) * m.sin(tetta))
+    # Горизонтальная скорость аппарата
+    V_horizontal = V * np.cos(tetta)
+
+    # Горизонтальная составляющая ветра
+    V_wind_horizontal = V_wind * np.cos(wind_angle)
+
+    # Суммарная горизонтальная скорость (аппарат + снос ветром)
+    V_total_horizontal = V_horizontal + V_wind_horizontal
+
+    dL = V_total_horizontal * (6051800 / R)
+
+    return dL, 'L'
+
+
+def dR_func(initial):
+    """
+    ИСПРАВЛЕННОЕ уравнение для изменения высоты
+    Ветер слабо влияет на вертикальное движение
+    """
+    V = initial['V']
+    tetta = initial['tetta']
+
+    # Вертикальная скорость определяется только скоростью аппарата
+    # Ветер практически не влияет на вертикальное движение
+    dR = V * np.sin(tetta)
+
     return dR, 'R'
 
 
-def wind(h, t, next_update_time, V_wind, wind_angle):
-    bounds = [0, 2_000, 6_000, 10_000, 18_000, 28_000, 36_000, 42_000, 48_000,
-              55_000, 61_000, 68_000, 76_000, 85_000, 94_000, 100_000, float('inf')]
+def wind(h, t, next_update_time, current_V_wind, current_wind_angle):
+    """
+    Улучшенная модель ветра с физическими ограничениями у поверхности
+    """
+    bounds = [0, 2000, 6000, 10000, 18000, 28000, 36000, 42000, 48000,
+              55000, 61000, 68000, 76000, 85000, 94000, 100000, float('inf')]
 
-    #Функциидлявычисленияv_windвзависимостиотдиапазона
-    actions=[
-        lambda: random.uniform(0, 3),  # 0 - 2 км
-        lambda: random.uniform(3, 7),  # 2 - 6 км
-        lambda: random.uniform(7, 15),  # 6 - 10 км
-        lambda: random.uniform(15, 25),  # 10 - 18 км
-        lambda: random.uniform(25, 35),  # 18 - 28 км
-        lambda: random.uniform(30, 40),  # 28 - 36 км
-        lambda: random.uniform(35, 50),  # 36 - 42 км
-        lambda: random.uniform(45, 60),  # 42 - 48 км
-        lambda: random.uniform(55, 70),  # 48 - 55 км
-        lambda: random.uniform(65, 80),  # 55 - 61 км
-        lambda: random.uniform(70, 90),  # 61 - 68 км
-        lambda: random.uniform(85, 100),  # 68 - 76 км
-        lambda: random.uniform(75, 85),  # 76 - 85 км
-        lambda: random.uniform(60, 75),  # 85 - 94 км
-        lambda: random.uniform(10, 20),  # 94 - 100 км
-        lambda: 0  # Выше 100 км
+    wind_ranges = [
+        (0, 3),  # 0-2 км
+        (3, 7),  # 2-6 км
+        (7, 15),  # 6-10 км
+        (15, 25),  # 10-18 км
+        (25, 35),  # 18-28 км
+        (30, 40),  # 28-36 км
+        (35, 50),  # 36-42 км
+        (45, 60),  # 42-48 км
+        (55, 70),  # 48-55 км
+        (65, 80),  # 55-61 км
+        (70, 90),  # 61-68 км
+        (85, 100),  # 68-76 км
+        (75, 85),  # 76-85 км
+        (60, 75),  # 85-94 км
+        (10, 20),  # 94-100 км
+        (0, 0)  # Выше 100 км
     ]
-    #Находим индекс диапазона с помощью bisect
-    index = bisect.bisect_right(bounds, h)-1
+
+    index = bisect.bisect_right(bounds, h) - 1
 
     if t >= next_update_time:
-        V_wind = actions[index]()  # Генерируем новую скорость ветра
-        wind_angle = random.uniform(0, m.pi/2)  # Генерируем новый угол ветра
-        #wind_angle = m.pi / 2 #random.uniform((-m.pi / 24), (m.pi / 24))
-        wind_timer = random.uniform(0.2, 10)  # Случайный таймер
-        next_update_time = t + wind_timer  # Устанавливаем время следующего обновления
+        min_wind, max_wind = wind_ranges[index]
 
-    return V_wind, wind_angle, next_update_time
+        # ФИЗИЧЕСКОЕ ОГРАНИЧЕНИЕ: у поверхности ветер слабее
+        if h < 1000:
+            # На высоте 0 м/с у поверхности, линейно растет до полной силы на 1000 м
+            height_factor = h / 1000.0
+            max_wind = max_wind * height_factor
+            min_wind = min_wind * height_factor
+
+        new_wind = np.random.uniform(min_wind, max_wind)
+        new_angle = np.random.uniform(0, np.pi / 2)
+        wind_timer = np.random.uniform(2.0, 8.0)
+        next_update_time = t + wind_timer
+    else:
+        new_wind = current_V_wind
+        new_angle = current_wind_angle
+        next_update_time = next_update_time
+
+    return new_wind, new_angle, next_update_time
 
 
 def runge_kutta_4(equations, initial, dt, dx):
@@ -532,7 +609,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         mach = V / V_sound
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 400:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 1400:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
             S, Cn, Fn, mass = 2.895, 0.97, 35, 225 #125 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
