@@ -363,7 +363,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         #print(f"поток {i} запущен")
         location = "start"
         t = 0
-        d = 0.8
+        d = 2.4
         S = (m.pi * d ** 2) / 4
         V, tetta, R, L = random.uniform(10_900, 11_100), random.uniform(-21, -17) * cToRad, Rb + h, 0
         #print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}')
@@ -379,7 +379,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
         while mach > 1.32:
-            S, Cn, Fn, mass = 4.52, 0, 0, 1755 # 1855 #
+            S, Cn, Fn, mass = 4.52, 0, 0, 1855 # 1755 #
             """этап 1 аэродинамическое торможение"""
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'

@@ -15,7 +15,6 @@ import sys
 # мат модель из книжки воронцова упрощенная
 
 
-
 # Cxa = 1.3#((2*L*r2*(1+r1/r2)/S))*(m.tan(Qk)/2)*(2*m.cos(0)**2*m.sin(Qk)**2+m.sin(0))
 # Cya = 0#((2*L*r2*(1+r1/r2))/S)*m.pi*m.cos(0)*m.sin(0)*m.cos(Qk)*m.cos(Qk)
 # Px = mass / Cxa * S
@@ -549,7 +548,7 @@ if __name__ == '__main__':
         child_conns.append(child_conn)
         tasks.append((i, equations, dx, child_conn))
 
-    pool = multiprocessing.Pool(processes=30)#multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())#multiprocessing.cpu_count()
 
     # Запускаем задачи асинхронно с отслеживанием завершения
     for task in tasks:
