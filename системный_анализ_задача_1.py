@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -46,10 +45,10 @@ class BranchAndBoundNode:
         self.prune_reason = None
 
 def solve_lp_relaxation(c, A, b, lower_bounds, upper_bounds):
-    """Решение LP-релаксации с заданными границами"""
+    """Решение задачи линейного программирования симплекс-методом"""
     n = len(c)
     bounds = [(lower_bounds[i], upper_bounds[i]) for i in range(n)]
-    result = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
+    result = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='simplex')
     return result
 
 def is_integer_solution(x, tol=1e-6):
@@ -101,7 +100,7 @@ def branch_and_bound(c, A, b, verbose=True):
 
         if not result.success:
             if verbose:
-                print(f"❌ LP-релаксация не имеет допустимого решения")
+                print(f"❌ Симплекс-метод: решение не найдено (недопустимая область)")
             node.is_pruned = True
             node.prune_reason = "infeasible"
             all_nodes.append(node)
@@ -112,7 +111,7 @@ def branch_and_bound(c, A, b, verbose=True):
         node.is_feasible = True
 
         if verbose:
-            print(f"✓ LP-релаксация решена успешно")
+            print(f"✓ Симплекс-метод: задача решена успешно")
             print(f"  Решение: x1 = {node.solution[0]:.6f}, x2 = {node.solution[1]:.6f}")
             print(f"  Значение целевой функции: f = {node.objective:.6f}")
 
@@ -181,6 +180,7 @@ def branch_and_bound(c, A, b, verbose=True):
             print("\n✗ Целочисленное решение не найдено")
 
         print(f"\nВсего обработано узлов: {len(all_nodes)}")
+        print(f"На каждом узле применялся симплекс-метод для решения задачи ЛП")
 
     return best_integer_solution, best_integer_objective, all_nodes
 
@@ -239,7 +239,9 @@ ax1.set_xlabel('x₁', fontsize=12, fontweight='bold')
 ax1.set_ylabel('x₂', fontsize=12, fontweight='bold')
 ax1.set_zlabel('f(x₁, x₂)', fontsize=12, fontweight='bold')
 ax1.set_title('3D: Целевая функция и узлы дерева\nf = -4.87x₁ - 3.47x₂', fontsize=13, fontweight='bold')
-ax1.legend(loc='best')
+handles, labels = ax1.get_legend_handles_labels()
+unique = [(h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]]
+ax1.legend(*zip(*unique), loc='best')
 fig.colorbar(surf, ax=ax1, shrink=0.5, aspect=5)
 
 # ========== 2D График ==========
@@ -250,28 +252,28 @@ x1_line = np.linspace(0, 3, 200)
 
 # Ограничение 1
 x2_constraint1 = (b[0] - A[0, 0] * x1_line) / A[0, 1]
-ax2.plot(x1_line, x2_constraint1, 'b-', linewidth=2, 
+ax2.plot(x1_line, x2_constraint1, 'b-', linewidth=2,
          label=f'{A[0,0]:.2f}x₁ + {A[0,1]:.2f}x₂ ≤ {b[0]:.2f}')
-ax2.fill_between(x1_line, 0, x2_constraint1, where=(x2_constraint1 >= 0), 
+ax2.fill_between(x1_line, 0, x2_constraint1, where=(x2_constraint1 >= 0),
                  alpha=0.15, color='blue')
 
 # Ограничение 2
 x2_constraint2 = (b[1] - A[1, 0] * x1_line) / A[1, 1]
-ax2.plot(x1_line, x2_constraint2, 'g-', linewidth=2, 
+ax2.plot(x1_line, x2_constraint2, 'g-', linewidth=2,
          label=f'{A[1,0]:.2f}x₁ + {A[1,1]:.2f}x₂ ≤ {b[1]:.2f}')
-ax2.fill_between(x1_line, 0, x2_constraint2, where=(x2_constraint2 >= 0), 
+ax2.fill_between(x1_line, 0, x2_constraint2, where=(x2_constraint2 >= 0),
                  alpha=0.15, color='green')
 
 # Допустимая область
 x2_feasible = np.minimum(x2_constraint1, x2_constraint2)
 x2_feasible = np.maximum(x2_feasible, 0)
-ax2.fill_between(x1_line, 0, x2_feasible, 
+ax2.fill_between(x1_line, 0, x2_feasible,
                  where=(x2_feasible >= 0) & (x1_line >= 0),
                  alpha=0.3, color='yellow', label='Допустимая область')
 
 # Линии уровня целевой функции
 levels = np.linspace(-8, 0, 15)
-contour = ax2.contour(X1, X2, Z, levels=levels, colors='gray', 
+contour = ax2.contour(X1, X2, Z, levels=levels, colors='gray',
                       alpha=0.4, linestyles='dashed', linewidths=0.8)
 ax2.clabel(contour, inline=True, fontsize=7)
 
@@ -279,7 +281,7 @@ ax2.clabel(contour, inline=True, fontsize=7)
 for i in range(0, 4):
     for j in range(0, 4):
         if (A[0, 0] * i + A[0, 1] * j <= b[0]) and (A[1, 0] * i + A[1, 1] * j <= b[1]):
-            ax2.plot(i, j, 's', color='lightblue', markersize=10, 
+            ax2.plot(i, j, 's', color='lightblue', markersize=10,
                     markeredgecolor='navy', markeredgewidth=1.5, alpha=0.7)
 
 # Отображаем узлы дерева
@@ -308,19 +310,19 @@ for i, node in enumerate(all_nodes):
                     markeredgecolor='black', markeredgewidth=1, zorder=5, alpha=0.7)
 
         # Номер узла
-        ax2.annotate(f'{node.id}', (px1, px2), xytext=(3, 3), 
+        ax2.annotate(f'{node.id}', (px1, px2), xytext=(3, 3),
                     textcoords='offset points', fontsize=8, fontweight='bold')
 
 # Оптимум с подписью
 if optimal_solution is not None:
     opt_x1, opt_x2 = int(optimal_solution[0]), int(optimal_solution[1])
-    ax2.plot(opt_x1, opt_x2, '*', color='red', markersize=22, 
-            markeredgecolor='black', markeredgewidth=2.5, 
+    ax2.plot(opt_x1, opt_x2, '*', color='red', markersize=22,
+            markeredgecolor='black', markeredgewidth=2.5,
             label=f'Оптимум: ({opt_x1}, {opt_x2}), f={optimal_objective:.2f}', zorder=11)
 
 ax2.set_xlabel('x₁', fontsize=12, fontweight='bold')
 ax2.set_ylabel('x₂', fontsize=12, fontweight='bold')
-ax2.set_title('2D: Допустимая область и узлы дерева\nветвей и границ', 
+ax2.set_title('2D: Допустимая область и узлы дерева\nветвей и границ',
               fontsize=13, fontweight='bold')
 ax2.grid(True, alpha=0.3)
 ax2.legend(loc='upper right', fontsize=9)
@@ -329,7 +331,7 @@ ax2.set_ylim(-0.3, 2.5)
 ax2.axhline(y=0, color='k', linewidth=0.5)
 ax2.axvline(x=0, color='k', linewidth=0.5)
 
-# ========== Дерево ветвлений ==========
+# ========== Дерево ветвлений (ИСПРАВЛЕННАЯ ЧАСТЬ) ==========
 ax3 = fig.add_subplot(133)
 ax3.axis('off')
 
@@ -377,52 +379,90 @@ def build_tree_structure(all_nodes):
     root = [n for n in all_nodes if n.parent_id is None][0]
     return build_node_dict(root)
 
-def layout_tree(node, x=0.5, y=1.0, level_height=0.15, width=1.0):
-    """Рекурсивная расстановка узлов дерева"""
+def layout_tree(node, x=0.5, y=1.0, level=0, width=1.0):
+    """Рекурсивная расстановка узлов дерева с уменьшенным расстоянием между ветвями"""
+    # Уменьшенные вертикальные расстояния между уровнями
+    level_heights = [0.20, 0.18, 0.16, 0.14, 0.12]
+    level_height = level_heights[min(level, len(level_heights)-1)]
+
     node['x'] = x
     node['y'] = y
 
     if not node['children']:
         return
 
-    # Распределяем детей по горизонтали
     n_children = len(node['children'])
+
     if n_children == 1:
         child_positions = [x]
+        child_widths = [width * 0.7]  # Уменьшена ширина для одного ребенка
     else:
-        child_width = width / (n_children + 1)
-        child_positions = [x - width/2 + child_width * (i + 1) for i in range(n_children)]
+        # Уменьшенное горизонтальное расстояние между детьми
+        spacing_factor = 1.6  # Было 1.8, уменьшили
+        total_width = width * spacing_factor
 
-    for child, child_x in zip(node['children'], child_positions):
+        if n_children == 2:
+            # Для двух детей делаем их ближе друг к другу
+            offset = total_width / 3.5  # Увеличен делитель для уменьшения расстояния
+            child_positions = [x - offset, x + offset]
+            child_widths = [total_width / 2.8] * 2  # Уменьшены ширины
+        else:
+            step = total_width / (n_children - 1)
+            child_positions = [x - total_width/2 + i * step for i in range(n_children)]
+            child_widths = [total_width / (n_children * 1.3)] * n_children
+
+    for child, child_x, child_width in zip(node['children'], child_positions, child_widths):
         child_y = y - level_height
-        layout_tree(child, child_x, child_y, level_height, width/(n_children+0.5))
+        layout_tree(child, child_x, child_y, level + 1, child_width)
 
 def draw_tree(ax, node, parent_x=None, parent_y=None):
-    """Рисование дерева"""
+    """Рисование дерева с рамками для всех узлов"""
     x, y = node['x'], node['y']
 
     # Рисуем связь с родителем
     if parent_x is not None:
         ax.plot([parent_x, x], [parent_y, y], 'k-', linewidth=1.5, alpha=0.6, zorder=1)
 
-    # Рисуем узел
+    # Определяем размеры и стиль рамки в зависимости от типа узла
     if node['color'] == 'gold':
-        shape = mpatches.FancyBboxPatch((x - 0.08, y - 0.04), 0.16, 0.08,
-                                        boxstyle="round,pad=0.005",
-                                        edgecolor='red', facecolor=node['color'], 
-                                        linewidth=3, zorder=3)
-    elif 'недопустимо' in node['label']:
-        shape = mpatches.FancyBboxPatch((x - 0.06, y - 0.03), 0.12, 0.06,
-                                        boxstyle="round,pad=0.003",
-                                        edgecolor='red', facecolor=node['color'], 
-                                        linewidth=2, zorder=2)
+        # Оптимальное решение
+        bbox_props = dict(boxstyle="round,pad=0.3", facecolor=node['color'],
+                         edgecolor='red', linewidth=3, alpha=1.0)
+        fontsize = 7
+        bbox = dict(boxstyle="round,pad=0.3", facecolor=node['color'],
+                   edgecolor='red', linewidth=3)
+    elif node['color'] == 'lightcoral':
+        # Недопустимый узел
+        bbox_props = dict(boxstyle="round,pad=0.2", facecolor=node['color'],
+                         edgecolor='darkred', linewidth=2, alpha=0.9)
+        fontsize = 7
+        bbox = dict(boxstyle="round,pad=0.2", facecolor=node['color'],
+                   edgecolor='darkred', linewidth=2)
+    elif node['color'] == 'lightgreen':
+        # Целочисленное решение
+        bbox_props = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                         edgecolor='darkgreen', linewidth=2, alpha=1.0)
+        fontsize = 7
+        bbox = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                   edgecolor='darkgreen', linewidth=2)
+    elif node['color'] == 'lightyellow':
+        # Отсеченный узел
+        bbox_props = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                         edgecolor='orange', linewidth=2, alpha=0.9)
+        fontsize = 7
+        bbox = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                   edgecolor='orange', linewidth=2)
     else:
-        shape = mpatches.Circle((x, y), 0.045, edgecolor='black', 
-                               facecolor=node['color'], linewidth=1.5, zorder=2)
+        # Обычный узел
+        bbox_props = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                         edgecolor='darkblue', linewidth=2, alpha=1.0)
+        fontsize = 7
+        bbox = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
+                   edgecolor='darkblue', linewidth=2)
 
-    ax.add_patch(shape)
-    ax.text(x, y, node['label'], ha='center', va='center', 
-            fontsize=7, fontweight='bold', zorder=4)
+    # Добавляем текст с рамкой
+    ax.text(x, y, node['label'], ha='center', va='center',
+            fontsize=fontsize, fontweight='bold', bbox=bbox, zorder=3)
 
     # Рисуем детей
     for child in node.get('children', []):
@@ -430,33 +470,38 @@ def draw_tree(ax, node, parent_x=None, parent_y=None):
 
 # Строим и рисуем дерево
 tree_root = build_tree_structure(all_nodes)
-layout_tree(tree_root)
+layout_tree(tree_root, x=0.5, y=0.95, level=0, width=0.8)  # Уменьшена начальная ширина
 draw_tree(ax3, tree_root)
 
-ax3.set_xlim(0, 1)
-ax3.set_ylim(-0.1, 1.1)
-ax3.set_title('Дерево ветвей и границ', fontsize=13, fontweight='bold', pad=20)
+ax3.set_xlim(-0.05, 1.05)
+ax3.set_ylim(-0.05, 1.05)
+ax3.set_title('Дерево ветвей и границ\n',
+              fontsize=12, fontweight='bold', pad=15)
 
-# Легенда
+# Легенда с улучшенным отображением
 legend_elements = [
-    mpatches.Patch(facecolor='lightblue', edgecolor='black', label='LP-релаксация'),
-    mpatches.Patch(facecolor='lightcoral', edgecolor='red', label='Недопустимый узел'),
-    mpatches.Patch(facecolor='lightyellow', edgecolor='black', label='Отсечено по границе'),
-    mpatches.Patch(facecolor='lightgreen', edgecolor='black', label='Целочисленное решение'),
-    mpatches.Patch(facecolor='gold', edgecolor='red', linewidth=2, label='Оптимум')
+    plt.Rectangle((0,0), 1, 1, facecolor='lightblue', edgecolor='darkblue',
+                  linewidth=2, label='Решение симплекс-методом'),
+    plt.Rectangle((0,0), 1, 1, facecolor='lightcoral', edgecolor='darkred',
+                  linewidth=2, label='Недопустимый узел'),
+    plt.Rectangle((0,0), 1, 1, facecolor='lightyellow', edgecolor='orange',
+                  linewidth=2, label='Отсечено по границе'),
+    plt.Rectangle((0,0), 1, 1, facecolor='lightgreen', edgecolor='darkgreen',
+                  linewidth=2, label='Целочисленное решение'),
+    plt.Rectangle((0,0), 1, 1, facecolor='gold', edgecolor='red',
+                  linewidth=3, label='Оптимум')
 ]
-ax3.legend(handles=legend_elements, loc='lower center', fontsize=8, ncol=2)
+ax3.legend(handles=legend_elements, loc='lower center', fontsize=8, ncol=2,
+           bbox_to_anchor=(0.5, -0.05))
 
 plt.tight_layout()
-plt.savefig('branch_and_bound_solution.png', dpi=150, bbox_inches='tight')
-print("\n✓ График сохранен в файл: branch_and_bound_solution.png")
 plt.show()
 
 # Итоговая сводка
 print("\n" + "="*70)
 print("СВОДКА ПО ВСЕМ УЗЛАМ")
 print("="*70)
-print(f"{'Узел':<6} {'Статус':<25} {'Решение (x1, x2)':<20} {'f(x)':<12}")
+print(f"{'Узел':<6} {'Статус':<30} {'Решение (x1, x2)':<20} {'f(x)':<12}")
 print("-"*70)
 for node in all_nodes:
     status = ""
@@ -471,12 +516,9 @@ for node in all_nodes:
         elif node.prune_reason == "bound":
             status = "✂ Отсечено по границе"
     else:
-        status = "→ Ветвление"
+        status = "→ Ветвление (симплекс-метод)"
 
     sol_str = f"({node.solution[0]:.4f}, {node.solution[1]:.4f})" if node.solution is not None else "—"
     obj_str = f"{node.objective:.6f}" if node.objective is not None else "—"
 
-    print(f"{node.id:<6} {status:<25} {sol_str:<20} {obj_str:<12}")
-
-print("="*70)
-print("\n★ Задача решена успешно!")
+    print(f"{node.id:<6} {status:<30} {sol_str:<20} {obj_str:<12}")
