@@ -357,19 +357,13 @@ def wind(h, t, next_update_time, current_V_wind, current_wind_angle):
         (0, 0)  # Выше 100 км
     ]
 
-    index = bisect.bisect_right(bounds, h) - 1
+    #index = bisect.bisect_right(bounds, h) - 1
 
     if t >= next_update_time:
-        min_wind, max_wind = wind_ranges[index]
+        #min_wind, max_wind = wind_ranges[index]
 
-        # ФИЗИЧЕСКОЕ ОГРАНИЧЕНИЕ: у поверхности ветер слабее
-        if h < 1000:
-            # На высоте 0 м/с у поверхности, линейно растет до полной силы на 1000 м
-            height_factor = h / 1000.0
-            max_wind = max_wind * height_factor
-            min_wind = min_wind * height_factor
-
-        new_wind = np.random.uniform(min_wind, max_wind)
+        #new_wind = np.random.uniform(min_wind, max_wind)
+        new_wind = np.random.uniform(-3, 3)
         new_angle = np.random.uniform(0, np.pi / 2)
         wind_timer = np.random.uniform(2.0, 8.0)
         next_update_time = t + wind_timer
@@ -609,7 +603,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         mach = V / V_sound
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 1400:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 500:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
             S, Cn, Fn, mass = 2.895, 0.97, 35, 225 #125 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
