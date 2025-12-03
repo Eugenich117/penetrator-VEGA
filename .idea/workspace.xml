@@ -4,12 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="изменен поиск максимума на минимума">
-      <change afterPath="$PROJECT_DIR$/метод ветвей и границ.py" afterDir="false" />
+    <list default="true" id="c22db136-7e71-446a-95e4-096dfbe7f6ce" name="Changes" comment="исправлена задача решения методов ветвей и границ">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" beforeDir="false" afterPath="$PROJECT_DIR$/ВЕГА Монте-Карло.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/системный_анализ_задача_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/системный_анализ_задача_1.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/системный_анализ_задача_1.py" beforeDir="false" afterPath="$PROJECT_DIR$/системный_анализ_задача_1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/метод ветвей и границ.py" beforeDir="false" afterPath="$PROJECT_DIR$/метод ветвей и границ.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -498,7 +495,7 @@
       <workItem from="1764568900920" duration="2000" />
       <workItem from="1764568969326" duration="9000" />
       <workItem from="1764568985240" duration="942000" />
-      <workItem from="1764756523607" duration="1870000" />
+      <workItem from="1764756523607" duration="6943000" />
     </task>
     <task id="LOCAL-00001" summary="подготовленный проект с верными уравнениями и системой интегрирования">
       <option name="closed" value="true" />
@@ -724,7 +721,23 @@
       <option name="project" value="LOCAL" />
       <updated>1764225181517</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="добавлена задача поиска минимума методом ветвей и границ">
+      <option name="closed" value="true" />
+      <created>1764758564967</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1764758564967</updated>
+    </task>
+    <task id="LOCAL-00030" summary="исправлена задача решения методов ветвей и границ">
+      <option name="closed" value="true" />
+      <created>1764760348997</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1764760348997</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -742,7 +755,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="подготовленный проект с верными уравнениями и системой интегрирования" />
     <MESSAGE value="исправление мелких ошибок" />
     <MESSAGE value="добавлен ветер, исправлены коэффициенты и опечатки, добавлен файл для отладки новых функцций проекта" />
     <MESSAGE value="добавлены файлы для моделирования баллистического спуска с реактивным двигателем (v1.0 с приближенным вычислением значения тяги двигателя) и скольязящим спуском (theory_of _fly)" />
@@ -766,7 +778,9 @@
     <MESSAGE value="в Вегу монте-карло добавлена статистика" />
     <MESSAGE value="в веге монте-карло изменен подход к учету ветра, теперь мы его учитываем, как относительную скорость" />
     <MESSAGE value="изменен поиск максимума на минимума" />
-    <option name="LAST_COMMIT_MESSAGE" value="изменен поиск максимума на минимума" />
+    <MESSAGE value="добавлена задача поиска минимума методом ветвей и границ" />
+    <MESSAGE value="исправлена задача решения методов ветвей и границ" />
+    <option name="LAST_COMMIT_MESSAGE" value="исправлена задача решения методов ветвей и границ" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -800,7 +814,7 @@
     <SUITE FILE_PATH="coverage/penetrator_VEGA$diplom_Yulia.coverage" NAME="diplom_Yulia Coverage Results" MODIFIED="1762767759297" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$theory_of_fly.coverage" NAME="theory_of_fly Coverage Results" MODIFIED="1745968062919" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$____.coverage" NAME="Возмущения НУ по Монте-Карло Coverage Results" MODIFIED="1757929433351" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/penetrator_VEGA$___1.coverage" NAME="системный_анализ_задача_1 Coverage Results" MODIFIED="1764757617903" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/penetrator_VEGA$___1.coverage" NAME="системный_анализ_задача_1 Coverage Results" MODIFIED="1764771593108" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$optimisation_func.coverage" NAME="optimisation_func Coverage Results" MODIFIED="1748823441518" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$b.coverage" NAME="b Coverage Results" MODIFIED="1758460347283" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads/Telegram Desktop" />
     <SUITE FILE_PATH="coverage/penetrator_VEGA$_6_.coverage" NAME="интерполяция 6 степени Coverage Results" MODIFIED="1739716148237" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../матеша" />
