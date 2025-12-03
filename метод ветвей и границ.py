@@ -495,7 +495,6 @@ ax3.legend(handles=legend_elements, loc='lower center', fontsize=8, ncol=2,
            bbox_to_anchor=(0.5, -0.05))
 
 plt.tight_layout()
-plt.savefig('branch_and_bound_solution.png', dpi=150, bbox_inches='tight')
 plt.show()
 
 # Итоговая сводка
