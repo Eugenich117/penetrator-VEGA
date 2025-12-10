@@ -450,7 +450,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
         while mach > 1.32:
-            S, Cn, Fn, mass = 4.52, 0, 0, 1855 # 1755 #
+            S, Cn, Fn, mass = 4.52, 0, 0, 1755 # 1855 #
             """этап 1 аэродинамическое торможение"""
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
@@ -459,7 +459,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             ro = Get_ro(R - Rb)
             Cxa = Cx(V, V_sound)
             Cxa_wind = Cx_wind(V, V_sound)
-            Px = mass / Cxa * S
+            Px = (mass / Cxa * S) * g
 
             initial.update(
                 {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -493,7 +493,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while mach > 0.74:
             """этап 2 спуск на парашюте увода """
-            S, Cn, Fn, mass = 4.52, 0.65, 6, 1855 #1755 #
+            S, Cn, Fn, mass = 4.52, 0.65, 6, 1755 #1855 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -501,7 +501,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             ro = Get_ro(R - Rb)
             Cxa = Cx(V, V_sound)
             Cxa_wind = Cx_wind(V, V_sound)
-            Px = mass / Cxa * S
+            Px = (mass / Cxa * S) * g
 
             initial.update(
                 {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -531,7 +531,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while t <= 71:  # было 70 по циклограмме
             """третий этап спуск с верхней полусферой на парашюте увода"""
-            S, Cn, Fn, mass = 4.155, 0.65, 6, 480 #380 #
+            S, Cn, Fn, mass = 4.155, 0.65, 6, 380 #480 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -539,7 +539,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             ro = Get_ro(R - Rb)
             Cxa = 1.28
             Cxa_wind = Cx_wind(V, V_sound)
-            Px = mass / Cxa * S
+            Px = (mass / Cxa * S) * g
 
             initial.update(
                 {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -568,7 +568,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         while t <= 231:  # while mach > 0.14: # # было 220 по циклограмме
             """четвертый этап спуск на стабилизирующем парашюте"""
-            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 225 # 125 #
+            S, Cn, Fn, mass = 2.895, 0.78, 1.5, 125 # 225 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -576,7 +576,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             ro = Get_ro(R - Rb)
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
-            Px = mass / Cxa * S
+            Px = (mass / Cxa * S) * g
 
             initial.update(
                 {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -603,9 +603,9 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         mach = V / V_sound
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 500:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 400:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
-            S, Cn, Fn, mass = 2.895, 0.97, 35, 225 #125 #
+            S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
             location = 'V_sound'
             V_sound = v_sound(R - Rb)
@@ -613,7 +613,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             ro = Get_ro(R - Rb)
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
-            Px = mass / Cxa * S
+            Px = (mass / Cxa * S) * g
 
             initial.update(
                 {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -1072,7 +1072,8 @@ if __name__ == '__main__':
     for i in range(iter):
         PX[i].pop()
         plt.plot(T[i], PX[i], label=f'Вариант {i + 1}')
-    plt.title('Зависимость давления на мидель от времени', fontsize=16, fontname='Times New Roman')
+    plt.title('Баллистический параметр', fontsize=16, fontname='Times New Roman')
+    #plt.title('Зависимость давления на мидель от времени', fontsize=16, fontname='Times New Roman')
     plt.xlabel('Время, с', fontsize=16, fontname='Times New Roman')
     plt.ylabel(r'Px, $\frac{кг}{м^2}$', fontsize=16, fontname='Times New Roman')
     plt.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.15)

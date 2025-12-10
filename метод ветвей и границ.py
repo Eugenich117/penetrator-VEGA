@@ -100,7 +100,7 @@ def branch_and_bound(c, A, b, verbose=True):
 
         if not result.success:
             if verbose:
-                print(f"❌ Симплекс-метод: решение не найдено (недопустимая область)")
+                print(f" Симплекс-метод: решение не найдено (недопустимая область)")
             node.is_pruned = True
             node.prune_reason = "infeasible"
             all_nodes.append(node)
@@ -111,13 +111,13 @@ def branch_and_bound(c, A, b, verbose=True):
         node.is_feasible = True
 
         if verbose:
-            print(f"✓ Симплекс-метод: задача решена успешно")
+            print(f" Симплекс-метод: задача решена успешно")
             print(f"  Решение: x1 = {node.solution[0]:.6f}, x2 = {node.solution[1]:.6f}")
             print(f"  Значение целевой функции: f = {node.objective:.6f}")
 
         if node.objective >= best_integer_objective:
             if verbose:
-                print(f"✂ Отсечение по границе: f = {node.objective:.6f} >= {best_integer_objective:.6f}")
+                print(f"  Отсечение по границе: f = {node.objective:.6f} >= {best_integer_objective:.6f}")
             node.is_pruned = True
             node.prune_reason = "bound"
             all_nodes.append(node)
@@ -125,7 +125,7 @@ def branch_and_bound(c, A, b, verbose=True):
 
         if is_integer_solution(node.solution):
             if verbose:
-                print(f"✓ Решение является целочисленным!")
+                print(f"  Решение является целочисленным!")
             node.is_integer = True
 
             if node.objective < best_integer_objective:
@@ -160,6 +160,15 @@ def branch_and_bound(c, A, b, verbose=True):
         right_child = BranchAndBoundNode(right_lower, right_upper, node.id, branch_var, "up")
         queue.append(right_child)
 
+        if verbose:
+            print("\n  Проверка оптимальности после ветвления:")
+            if best_integer_solution is not None:
+                print(f"   Текущее лучшее целочисленное решение: "
+                      f"x* = ({int(best_integer_solution[0])}, {int(best_integer_solution[1])}), "
+                      f"f* = {best_integer_objective:.6f}")
+            else:
+                print("   Пока ни одного целочисленного решения нет, глобальный оптимум не определён")
+
         all_nodes.append(node)
 
     if verbose:
@@ -180,7 +189,7 @@ def branch_and_bound(c, A, b, verbose=True):
             print("\n✗ Целочисленное решение не найдено")
 
         print(f"\nВсего обработано узлов: {len(all_nodes)}")
-        print(f"На каждом узле применялся симплекс-метод для решения задачи ЛП")
+        print(f"На каждом узле применялся симплекс-метод для решения ЗЛП")
 
     return best_integer_solution, best_integer_objective, all_nodes
 
@@ -346,7 +355,7 @@ def build_tree_structure(all_nodes):
         status = ""
         if node.is_integer:
             if node.objective == optimal_objective:
-                color = 'gold'
+                color = 'green'
                 status = "★"
             else:
                 color = 'lightgreen'
@@ -424,10 +433,10 @@ def draw_tree(ax, node, parent_x=None, parent_y=None):
         ax.plot([parent_x, x], [parent_y, y], 'k-', linewidth=1.5, alpha=0.6, zorder=1)
 
     # Определяем размеры и стиль рамки в зависимости от типа узла
-    if node['color'] == 'gold':
+    if node['color'] == 'green':
         # Оптимальное решение
         bbox_props = dict(boxstyle="round,pad=0.3", facecolor=node['color'],
-                         edgecolor='red', linewidth=3, alpha=1.0)
+                         edgecolor='green', linewidth=3, alpha=1.0)
         fontsize = 7
         bbox = dict(boxstyle="round,pad=0.3", facecolor=node['color'],
                    edgecolor='red', linewidth=3)
@@ -448,7 +457,7 @@ def draw_tree(ax, node, parent_x=None, parent_y=None):
     elif node['color'] == 'lightyellow':
         # Отсеченный узел
         bbox_props = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
-                         edgecolor='orange', linewidth=2, alpha=0.9)
+                         edgecolor='green', linewidth=2, alpha=0.9)
         fontsize = 7
         bbox = dict(boxstyle="round,pad=0.25", facecolor=node['color'],
                    edgecolor='orange', linewidth=2)
@@ -486,9 +495,7 @@ legend_elements = [
                   linewidth=2, label='Недопустимый узел'),
     plt.Rectangle((0,0), 1, 1, facecolor='lightyellow', edgecolor='orange',
                   linewidth=2, label='Отсечено по границе'),
-    plt.Rectangle((0,0), 1, 1, facecolor='lightgreen', edgecolor='darkgreen',
-                  linewidth=2, label='Целочисленное решение'),
-    plt.Rectangle((0,0), 1, 1, facecolor='gold', edgecolor='red',
+    plt.Rectangle((0,0), 1, 1, facecolor='green', edgecolor='green',
                   linewidth=3, label='Оптимум')
 ]
 ax3.legend(handles=legend_elements, loc='lower center', fontsize=8, ncol=2,
