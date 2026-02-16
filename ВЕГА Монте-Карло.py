@@ -442,6 +442,16 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         local_TETTA = []; local_X = []; local_Y = []; local_V_MOD = []; local_T = []; local_napor = []; local_nx = []
         local_PX = []; local_acceleration = []; local_v_wind = []; local_wind_angle = []
+        checkpoint_data = {
+            'stage1_end': {},  # Конец этапа 1 (Mach <= 1.32)
+            'stage2_end': {},  # Конец этапа 2 (Mach <= 0.74)
+            't71': {},  # 71 секунд
+            't231': {},  # 231 секунд
+            't400': {},  # 400 секунд
+            't640': {},  # 640 секунд
+            't1000': {}  # 1000 секунд
+        }
+        saved_flags = {key: False for key in checkpoint_data.keys()}
         next_update_time = -1
         V_wind = 0
         wind_angle = 0
@@ -486,8 +496,16 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
             local_PX.append(Px)
 
+
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
+        if not saved_flags['stage1_end']:
+            checkpoint_data['stage1_end'] = {
+                'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                'napor': 0.5 * ro * V ** 2,
+                'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+            }
+            saved_flags['stage1_end'] = True
         #print(f' 1) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while mach > 0.74:
@@ -527,6 +545,13 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
+        if not saved_flags['stage2_end']:
+            checkpoint_data['stage2_end'] = {
+                'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                'napor': 0.5 * ro * V ** 2,
+                'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+            }
+            saved_flags['stage2_end'] = True
         #print(f' 2) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while t <= 71:  # было 70 по циклограмме
@@ -565,6 +590,13 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
+        if not saved_flags['t71']:
+            checkpoint_data['t71'] = {
+                'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                'napor': 0.5 * ro * V ** 2,
+                'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+            }
+            saved_flags['t71'] = True
         #print(f' 3) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         while t <= 231:  # while mach > 0.14: # # было 220 по циклограмме
@@ -578,7 +610,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
-            T_mrla = 31 * ro * 1
+            T_mrla = 0#31 * ro * 1
 
             initial.update(
                 {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -603,9 +635,16 @@ def compute_trajectory(i, equations, dx, pipe_conn):
 
         V_sound = v_sound(R - Rb)
         mach = V / V_sound
+        if not saved_flags['t231']:
+            checkpoint_data['t231'] = {
+                'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                'napor': 0.5 * ro * V ** 2,
+                'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+            }
+            saved_flags['t231'] = True
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 3000:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 1500:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
             S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
@@ -616,7 +655,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
-            T_mrla = 31 * ro * 1
+            T_mrla = 0#31 * ro * 1
 
             initial.update(
                 {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -639,6 +678,31 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             local_napor.append(0.5 * ro * V ** 2)
             local_nx.append((0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2)))
             local_PX.append(Px)
+            if not saved_flags['t400'] and t >= 400:
+                checkpoint_data['t400'] = {
+                    'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                    'napor': 0.5 * ro * V ** 2,
+                    'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+                }
+                saved_flags['t400'] = True
+
+            if not saved_flags['t640'] and t >= 640:
+                checkpoint_data['t640'] = {
+                    'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                    'napor': 0.5 * ro * V ** 2,
+                    'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+                }
+                saved_flags['t640'] = True
+
+            if not saved_flags['t1000']:
+                checkpoint_data['t1000'] = {
+                    'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
+                    'napor': 0.5 * ro * V ** 2,
+                    'nx': (0.5 * S * Cxa * ro * V ** 2) / (mass * ((gravy_const * mass_planet) / R ** 2))
+                }
+                saved_flags['t1000'] = True
+
+
         print(f' 5) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
         location = 'compute_acceleration'
@@ -648,7 +712,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         location = 'pack_result'
 
         result = (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX,
-                  local_acceleration, local_v_wind, local_wind_angle)
+                  local_acceleration, local_v_wind, local_wind_angle, checkpoint_data)
 
         try:
             pipe_conn.send(result)
@@ -716,6 +780,7 @@ if __name__ == '__main__':
     V_MOD = ([[] for _ in range(iter)])
     V_WIND = ([[] for _ in range(iter)])
     WIND_ANGLE = ([[] for _ in range(iter)])
+    checkpoints_all = ([[] for _ in range(iter)])
     processes = []
     parent_conns = []
     child_conns = []
@@ -754,7 +819,7 @@ if __name__ == '__main__':
     for i in range(iter):
         result = parent_conns[i].recv()
         (i, local_TETTA, local_X, local_Y, local_V_MOD, local_T, local_napor, local_nx, local_PX, local_acceleration,
-         local_v_wind, local_wind_angle) = result
+         local_v_wind, local_wind_angle, checkpoint_data) = result
         TETTA[i] = local_TETTA
         X[i] = local_X
         Y[i] = local_Y
@@ -766,6 +831,7 @@ if __name__ == '__main__':
         acceleration[i] = local_acceleration
         WIND_ANGLE[i] = local_wind_angle
         V_WIND[i] = local_v_wind
+        checkpoints_all[i] = checkpoint_data
 
     print("\n" + "=" * 80)
     print("ПРОВЕРКА КОРРЕКТНОСТИ ДАННЫХ ДЛЯ ВСЕХ ПЕРЕМЕННЫХ")
@@ -1242,6 +1308,65 @@ if __name__ == '__main__':
         min_val = np.min(all_values)
         max_val = np.max(all_values)
         print(f"{key}: min = {min_val}, max = {max_val}")
+
+    print("\n" + "=" * 80)
+    print("СТАТИСТИКИ НА КОНТРОЛЬНЫХ ТОЧКАХ")
+    print("=" * 80)
+
+    checkpoint_names = {
+        'stage1_end': 'Конец этапа 1 (Mach ≤ 1.32)',
+        'stage2_end': 'Конец этапа 2 (Mach ≤ 0.74)',
+        't71': 'Время = 71 сек',
+        't231': 'Время = 231 сек',
+        't400': 'Время = 400 сек',
+        't640': 'Время = 640 сек',
+        't1000': 'Время = 1000 сек (финал)'
+    }
+
+    variables_of_interest = ['V', 'tetta', 'R', 'L', 't', 'napor', 'nx']
+    var_units = {
+        'V': 'м/с',
+        'tetta': 'град',
+        'R': 'м',
+        'L': 'м',
+        't': 'с',
+        'napor': 'Па',
+        'nx': 'g'
+    }
+
+    for checkpoint_key, checkpoint_name in checkpoint_names.items():
+        print(f"\n{checkpoint_name}")
+        print("-" * 80)
+
+        checkpoint_values = {var: [] for var in variables_of_interest}
+
+        for i in range(iter):
+            if checkpoints_all[i] and checkpoint_key in checkpoints_all[i]:
+                cp_data = checkpoints_all[i][checkpoint_key]
+                for var in variables_of_interest:
+                    if var in cp_data:
+                        value = cp_data[var]
+                        if var == 'tetta':
+                            value = value * 180 / m.pi
+                        if var == 'R':
+                            value = value - 6_051_800
+                        checkpoint_values[var].append(value)
+
+        print(f"{'Параметр':<15} {'Ед.изм.':<10} {'Среднее':<12} {'СКО':<12} {'Min':<12} {'Max':<12} {'N':<5}")
+        print("-" * 80)
+
+        for var in variables_of_interest:
+            if checkpoint_values[var]:
+                values = np.array(checkpoint_values[var])
+                mean_val = np.mean(values)
+                std_val = np.std(values, ddof=1)
+                min_val = np.min(values)
+                max_val = np.max(values)
+                count = len(values)
+                unit = var_units.get(var, '')
+
+                print(
+                    f"{var:<15} {unit:<10} {mean_val:<12.4f} {std_val:<12.4f} {min_val:<12.4f} {max_val:<12.4f} {count:<5}")
 
     end_time = time.time()
     elapsed_time = end_time - start_time
