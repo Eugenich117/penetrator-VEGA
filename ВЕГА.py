@@ -215,8 +215,9 @@ def dV_func(initial):
     tetta = initial['tetta']
     Cn = initial['Cn']
     Fn = initial['Fn']
+    T_mrla =initial['T_mrla']
     #dV = ((-1 / (2 * Px)) * Cxa * ro * V ** 2 - ((gravy_const*mass_planet)/R**2) * scipy.special.sindg(tetta)) * dt # ОСНОВНАЯ МОДЕЛЬ КОСЕНКОВОЙ
-    dV = ((-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)))) / mass
+    dV = (-mass * (g * Rb ** 2 / R ** 2) * m.sin(tetta) - (0.5 * ro * V ** 2 * (Cxa * S + Cn * Fn)) - T_mrla) / mass
     return dV, 'V'
 
 def dL_func(initial):
@@ -306,14 +307,15 @@ while mach > 1.32:
 
     tmich=t
     """этап 1 аэродинамическое торможение"""
-    S, Cn, Fn, mass = 4.52, 0, 0, 1755 #1855 #1750 # оригинальное число 1750
+    S, Cn, Fn, mass = 4.52, 0, 0, 1855 #1755 #1750 # оригинальное число 1750
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
+    T_mrla = 0
 
     initial.update(
-        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        {'T_mrla': T_mrla, 'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
@@ -339,14 +341,15 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while mach > 0.74:
     """этап 2 спуск на паращюте увода """
-    S, Cn, Fn, mass = 4.52, 0.65, 6, 1755 #1855 #1750 # оригинальное число 1750
+    S, Cn, Fn, mass = 4.52, 0.65, 6, 1855 #1755 #1750 # оригинальное число 1750
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = Cx(V, V_sound)
     Px = mass / Cxa * S
+    T_mrla = 0
 
     initial.update(
-        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        {'T_mrla': T_mrla, 'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
@@ -373,14 +376,15 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while t <= 71: #было 70 по циклограмме
     """третий этап спуск с верхней полусферой на парашюте увода"""
-    S, Cn, Fn, mass = 4.155, 0.65, 6, 380 # 480 # 375 # оригинальное число 375
+    S, Cn, Fn, mass = 4.155, 0.65, 6, 480 # 380 # 375 # оригинальное число 375
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 1.28
     Px = mass / Cxa * S
+    T_mrla = 0
 
     initial.update(
-        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        {'T_mrla': T_mrla, 'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
@@ -406,14 +410,15 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while t <= 231: #while mach > 0.14: # # было 220 по циклограмме
     """четвертый этап спуск на стабилизирующем парашюте"""
-    S, Cn, Fn, mass = 2.895, 0.78, 1.5, 125 # 225 #120 #оригинальное число 120
+    S, Cn, Fn, mass = 2.895, 0.78, 1.5, 225 # 125 #120 #оригинальное число 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58
     Px = mass / Cxa * S
+    T_mrla = 31 * ro * 1
 
     initial.update(
-        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        {'T_mrla': T_mrla, 'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
@@ -438,14 +443,15 @@ print(f'V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R-Rb):.3f}
 
 while t <= 3000: #while mach > 0.03: # было 400 по циклограмме
     """пятый этап спуск на парашюте ввода аэростата """
-    S, Cn, Fn, mass= 2.895, 0.97, 35, 125 # 225 #120 #оригинальное число 120
+    S, Cn, Fn, mass= 2.895, 0.97, 35, 225 # 125 #120 #оригинальное число 120
     V_sound = v_sound(R - Rb)
     ro = Get_ro(R - Rb)
     Cxa = 0.58
     Px = mass / Cxa * S
+    T_mrla = 31 * ro * 1
 
     initial.update(
-        {'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
+        {'T_mrla': T_mrla,'S': S, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R, 'mass': mass})
     values = runge_kutta_4(equations, initial, dt, dx)
     V = values[0]
     L = values[1]
