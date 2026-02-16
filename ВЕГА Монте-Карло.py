@@ -228,6 +228,7 @@ def dV_func(initial):
     wind_angle = initial['wind_angle']
     Cn = initial['Cn']
     Fn = initial['Fn']
+    T_mrla =initial['T_mrla']
 
     # Гравитация
     g_local = 8.87 * (6051800 / R) ** 2
@@ -240,7 +241,7 @@ def dV_func(initial):
     V_relative = V - V_wind_parallel
 
     # Сила сопротивления зависит от ОТНОСИТЕЛЬНОЙ скорости
-    drag_force = 0.5 * ro * V_relative ** 2 * (Cxa * S + Cn * Fn)
+    drag_force = 0.5 * ro * V_relative ** 2 * (Cxa * S + Cn * Fn) - T_mrla
 
     # Подъемная сила аэростата (проекция на траекторию)
     balloon_force = ro * 8.87 * np.sin(tetta)
@@ -251,10 +252,7 @@ def dV_func(initial):
     # Суммарная сила
     total_force = balloon_force - gravity_force - np.sign(V_relative) * drag_force
 
-    # Эффективная масса
-    effective_mass = mass + ro
-
-    dV = total_force / effective_mass
+    dV = total_force / mass
 
     return dV, 'V'
 
@@ -460,9 +458,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = Cx(V, V_sound)
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
+            T_mrla = 0
 
             initial.update(
-                {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
+                {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
                  'mass': mass, 'Cxa_wind': Cxa_wind, 'wind_angle': wind_angle, 'V_wind': V_wind})
             '''try:
                 
@@ -502,9 +501,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = Cx(V, V_sound)
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
+            T_mrla = 0
 
             initial.update(
-                {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
+                {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
                  'mass': mass, 'Cxa_wind': Cxa_wind, 'wind_angle': wind_angle, 'V_wind': V_wind})
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
@@ -540,9 +540,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 1.28
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
+            T_mrla = 0
 
             initial.update(
-                {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
+                {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
                  'mass': mass, 'Cxa_wind': Cxa_wind, 'wind_angle': wind_angle, 'V_wind': V_wind})
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
@@ -577,9 +578,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
+            T_mrla = 31 * ro * 1
 
             initial.update(
-                {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
+                {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
                  'mass': mass, 'Cxa_wind': Cxa_wind, 'wind_angle': wind_angle, 'V_wind': V_wind})
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
@@ -603,7 +605,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
         mach = V / V_sound
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 400:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 3000:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
             S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
@@ -614,9 +616,10 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
+            T_mrla = 31 * ro * 1
 
             initial.update(
-                {'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
+                {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
                  'mass': mass, 'Cxa_wind': Cxa_wind, 'wind_angle': wind_angle, 'V_wind': V_wind})
             values = runge_kutta_4(equations, initial, dt, dx)
             V = values[0]
