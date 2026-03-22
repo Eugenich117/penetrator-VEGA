@@ -610,7 +610,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
-            T_mrla = 0#31 * ro * 1
+            T_mrla = 31 * ro * 1
 
             initial.update(
                 {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -644,7 +644,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             saved_flags['t231'] = True
         #print(f' 4) V = {V:.3f}, tetta = {tetta * cToDeg:.3f}, L = {L:.3f}, H = {(R - Rb):.3f}, Mach={mach:.3f}, {t:.3f}')
 
-        while t <= 1500:  # while mach > 0.03: # было 400 по циклограмме
+        while t <= 1000:  # while mach > 0.03: # было 400 по циклограмме
             """пятый этап спуск на парашюте ввода аэростата """
             S, Cn, Fn, mass = 2.895, 0.97, 35, 125 #225 #
             V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle) #0, 0, 100000000#
@@ -655,7 +655,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
             Cxa = 0.58
             Cxa_wind = Cx_wind(V, V_sound)
             Px = (mass / Cxa * S) * g
-            T_mrla = 0#31 * ro * 1
+            T_mrla = 31 * ro * 1
 
             initial.update(
                 {'T_mrla': T_mrla, 'S': S, 'g': g, 'Cn': Cn, 'Fn': Fn, 'tetta': tetta, 'Cxa': Cxa, 'ro': ro, 'L': L, 'V': V, 'R': R,
@@ -694,7 +694,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
                 }
                 saved_flags['t640'] = True
 
-            if not saved_flags['t1000']:
+            if not saved_flags['t1000'] and t >= 1000:
                 checkpoint_data['t1000'] = {
                     'V': V, 'tetta': tetta, 'R': R, 'L': L, 't': t,
                     'napor': 0.5 * ro * V ** 2,

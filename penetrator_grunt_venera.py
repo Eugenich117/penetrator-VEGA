@@ -64,7 +64,7 @@ QK_VALUES = [round(10.0 + i * QK_STEP, 2)
              for i in range(int((90 - 10) / QK_STEP) + 1)]   # 161 значение
 V0_VALUES = list(range(50, 136, V0_STEP))                     # 86 значений
 
-X_REQUIRED = 5.0     # требуемая глубина внедрения, м
+X_REQUIRED = 3.0     # требуемая глубина внедрения, м
 X_MAX_SIM  = 30.0    # ограничение симуляции
 DT         = 1e-4    # шаг РК4, с
 

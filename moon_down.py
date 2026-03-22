@@ -28,11 +28,11 @@ import time
 import numpy as np
 from scipy.optimize import minimize, differential_evolution
 import matplotlib
-#matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 # ─────────────────────────────────────────────────────────────────
-#  ИСХОДНЫЕ ДАННЫЕ  ← ЗАМЕНИТЕ НА СВОИ ЕСЛИ ЕСТЬ ЗАДАНИЕ
+#  ИСХОДНЫЕ ДАННЫЕ
 # ─────────────────────────────────────────────────────────────────
 # Луна
 g   = 1.62          # ускорение свободного падения, м/с²
