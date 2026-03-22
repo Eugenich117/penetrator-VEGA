@@ -5,92 +5,71 @@
  ПМП-ОПТИМИЗАЦИЯ СПУСКА ПЕНЕТРАТОРА В АТМОСФЕРУ ВЕНЕРЫ
  Источники данных: оптимизация_пенетратор.py, модификация_корпуса_пенетратора.py
 =============================================================================
-
- ЗАДАЧА ОПТИМИЗАЦИИ (задача Больца → Майера)
-   J = λ_Q · Q(T) − λ_V · V(T)  →  min
-   Q(T) = ∫₀ᵀ q(ρ, V, h) dt  — суммарный тепловой поток на носок [Дж/м²]
-   V(T)                         — скорость в конечный момент T [м/с]
-
- НАГРЕВ (на протяжении всего полёта, включая горячую атмосферу <50 км):
-   q = q_turb + q_comp + q_amb
-   q_turb = 1.15e6 · ρ^0.8 / 0.5^0.2 · (V/7328)^3.19   (турб. аэродин., из qk_func)
-   q_comp = 7.845·0.5 · (ρ/64.79) · (V/1000)^8          (сжатие, из qk_func)
-   q_amb  = h_conv · max(0, T_атм − T_стенки)            (конвекция от атм. Венеры)
-
- УРАВНЕНИЯ ДВИЖЕНИЯ (из оптимизация_пенетратор.py, без ветра/тяги + управление K):
-   dV/dt = −g(R)·sinθ − D_m
-   dθ/dt = −g(R)/V·cosθ + V/R + K·D_m/V      K — управление (L/D)
-   dR/dt = V·sinθ
-   dQ/dt = q(ρ,V,h)
-   D_m = 0.5·ρ·V²·Cx·S/m,    g(R) = g₀·(Rb/R)²
-
- УПРАВЛЕНИЕ bang-bang:  K ∈ {0, K_max}
-   Σ = ψ_θ·D_m/V:   K=K_max если Σ<0,  K=0 если Σ≥0
-
- ГАМИЛЬТОНИАН:  H = ψ_V·f_V + ψ_θ·f_θ + ψ_R·f_R + λ_Q·q
- СОПРЯЖЁННЫЕ:   ψ̇ = −∂H/∂x  (аналитически)
- ТЕРМИНАЛЬНЫЕ:  ψ_V(T)=−λ_V,  ψ_θ(T)=0,  ψ_R(T)=0
-
- АЛГОРИТМ: 1) Оптимизация по временам переключения (DE + Нелдер-Мид)
-           2) Верификация: обратное интегрирование сопряжённых (Radau, устойчиво)
-=============================================================================
+...
 """
 
-import math, time
+import math, sys, time                           # [CROSS-PLATFORM] добавлен sys
 import numpy as np
 from scipy.optimize import differential_evolution, minimize
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 import matplotlib
+import matplotlib.font_manager as _fm            # [CROSS-PLATFORM] для поиска шрифта
 import matplotlib.pyplot as plt
 import warnings
-import numpy as np
 import multiprocessing as _mp
 from concurrent.futures import ProcessPoolExecutor
 
 warnings.filterwarnings('ignore')
 
-matplotlib.rcParams.update({'font.family': 'Times New Roman', 'font.size': 13})
+# [CROSS-PLATFORM] Выбор шрифта с fallback-цепочкой
+def _select_font():
+    available = {f.name for f in _fm.fontManager.ttflist}
+    for name in ('Times New Roman', 'DejaVu Serif', 'Georgia', 'serif'):
+        if name in available:
+            return name
+    return 'serif'
 
-# ─── Параметры аппарата (из обоих файлов-источников) ─────────────────────────
-Rb        = 6_051_800.0    # м   — радиус Венеры
-g0        = 8.87           # м/с² — g поверхности (модификация_корпуса)
-mass      = 120.0          # кг
-d_body    = 0.8            # м   — диаметр мидели (compute_trajectory)
-S         = math.pi * (d_body / 2) ** 2   # м² ≈ 0.5027
-r_nose    = 0.5            # м   — радиус носка (хардкодирован в qk_func)
+matplotlib.rcParams.update({'font.family': _select_font(), 'font.size': 13})
 
-# Начальные условия
-h0        = 125_000.0      # м
-V0        = 11_000.0       # м/с
-theta0    = -19.0 * math.pi / 180.0   # рад (tetta=-19 из модификация_корпуса)
+# [CROSS-PLATFORM] Контекст мультипроцессинга:
+#   Windows          → spawn (единственный доступный)
+#   macOS (py≥3.8)   → spawn (fork нестабилен из-за системных потоков)
+#   Linux            → fork  (быстрее, безопасен)
+def _mp_ctx():
+    if sys.platform in ('win32', 'darwin'):
+        return _mp.get_context('spawn')
+    return _mp.get_context('fork')
 
-# Тепловой расчёт
-h_conv    = 80.0           # Вт/(м²·К) — конвекц. теплообмен с атмосферой Венеры
-T_wall    = 600.0          # К         — темп. стенки пенетратора
-R_CO2     = 188.9          # Дж/(кг·К) — уд. газовая постоянная CO₂
+# ─── Параметры аппарата ───────────────────────────────────────────────────────
+Rb        = 6_051_800.0
+g0        = 8.87
+mass      = 120.0
+d_body    = 0.8
+S         = math.pi * (d_body / 2) ** 2
+r_nose    = 0.5
 
-# Веса функционала  J = λ_Q·Q − λ_V·V  →  min
+h0        = 125_000.0
+V0        = 11_000.0
+theta0    = -19.0 * math.pi / 180.0
+
+h_conv    = 80.0
+T_wall    = 600.0
+R_CO2     = 188.9
+
 lambda_V  = 1.0
-lambda_Q  = 5.0e-6   # ≈ каждый МДж/м² «стоит» 5 м/с скорости
-                     # Pareto-фронт: меняйте λ_Q от 1e-7 до 5e-5
+lambda_Q  = 5.0e-6
 
-# Управление
-K_MAX     = 0.30     # макс. аэродинамическое качество L/D
+K_MAX     = 0.30
 
-# Числ. интегрирование
-DT        = 0.2      # с — основной шаг РК4
-DT_FINE   = 0.02     # с — точный шаг вблизи поверхности (h < 3 км)
-T_MAX     = 3_500.0  # с — предел полного спуска
-T_EST     = 130.0    # с — оценка длины гиперзвуковой фазы (125→55 км)
+DT        = 0.2
+DT_FINE   = 0.02
+T_MAX     = 3_500.0
+T_EST     = 130.0
 
 DEG = math.pi / 180.0
 
-# =============================================================================
-# ТАБЛИЦЫ АТМОСФЕРЫ — точный перенос из обоих файлов-источников
-# Высоты УБЫВАЮТ от 130 до 0 (как в x-списках newton_interpolation_ro)
-# =============================================================================
-
+# ─── Таблицы атмосферы ────────────────────────────────────────────────────────
 _H = [130,128,126,124,122,120,118,116,114,112,110,108,106,104,102,
       100,98,96,94,92,90,88,86,84,82,80,78,76,74,72,
       70,68,66,64,62,60,58,56,54,52,50,48,46,44,42,
@@ -132,18 +111,14 @@ _PRES = [0.0019907,0.005,0.10,0.30,0.50,0.70,0.90,1.10,1.30,1.50,1.70,
          5081000.0,5444000.0,5828000.0,6235000.0,6665000.0,7120000.0,
          7601000.0,8109000.0,8645000.0,9210000.0]
 
-# Cx vs Mach — из Cx(xi, V_sound) в оптимизация_пенетратор.py
 _CX_M = [0.0,0.2,0.4,0.6,1.0,1.2,1.4,1.8,2.0,2.2,2.4,2.6,2.8,
          3.2,3.6,4.0,4.4,4.8,5.2,6.0]
 _CX_V = [0.75,0.9,1.1,1.3,1.45,1.52,1.55,1.6,1.7,1.8,1.78,
          1.75,1.7,1.65,1.6,1.55,1.52,1.52,1.52,1.52]
 
-# =============================================================================
-# ИНТЕРПОЛЯЦИЯ НЬЮТОНА — точный порт newton_interpolation_ro из источников
-# =============================================================================
+# ─── Интерполяция Ньютона ─────────────────────────────────────────────────────
 
 def _n4(x_tbl, y_tbl, xi):
-    """4-точечная интерполяция Ньютона (убывающие x_tbl)."""
     n = len(x_tbl)
     idx = None
     for i in range(n):
@@ -156,20 +131,16 @@ def _n4(x_tbl, y_tbl, xi):
         idx = list(range(4)) if xi > x_tbl[0] else list(range(n-4, n))
     xp = [x_tbl[k] for k in idx]
     yp = [y_tbl[k] for k in idx]
-    # Разделённые разности (in-place, как в источнике)
     for j in range(1, 4):
         for i in range(3, j-1, -1):
             if xp[i] != xp[i-j]:
                 yp[i] = (yp[i] - yp[i-1]) / (xp[i] - xp[i-j])
-    # Схема Хорнера
     res = yp[3]
     for i in range(2, -1, -1):
         res = res * (xi - xp[i]) + yp[i]
     return res
 
-
 def _n2(x_tbl, y_tbl, xi):
-    """2-точечная (линейная) интерполяция Ньютона (newton_interpolation)."""
     for i in range(len(x_tbl)):
         if x_tbl[i] >= xi:
             i0 = max(i-1, 0); i1 = min(i, len(x_tbl)-1)
@@ -179,10 +150,7 @@ def _n2(x_tbl, y_tbl, xi):
             return y_tbl[i0] + (y_tbl[i1]-y_tbl[i0])/(x1-x0)*(xi-x0)
     return y_tbl[-1]
 
-# =============================================================================
-# ФУНКЦИИ АТМОСФЕРЫ (порт Get_ro, v_sound, pressure_func)
-# Принимают высоту над поверхностью в метрах
-# =============================================================================
+# ─── Функции атмосферы ────────────────────────────────────────────────────────
 
 def Get_ro(h_m):
     h_km = max(0., min(130., h_m/1000.))
@@ -197,33 +165,20 @@ def pressure_atm(h_m):
     return max(_n4(_H, _PRES, h_km), 0.)
 
 def T_atm(h_m):
-    """T = P/(ρ·R_CO₂). T(0)≈753К, T(50км)≈354К."""
     ro = Get_ro(h_m)
     return pressure_atm(h_m) / (ro * R_CO2)
 
 def dro_dh(h_m):
-    """∂ρ/∂h числовое [кг/м⁴]."""
     eps = 500.
     return (Get_ro(min(h_m+eps,130000.)) - Get_ro(max(h_m-eps,0.))) / (2.*eps)
-
-# =============================================================================
-# Cx(V, h) — порт из Cx(xi, V_sound) в оптимизация_пенетратор.py
-# =============================================================================
 
 def Cx_func(V, h_m):
     M = V / v_sound(h_m)
     return max(0.5, min(_n2(_CX_M, _CX_V, M), 2.5))
 
-# =============================================================================
-# ТЕПЛОВОЙ ПОТОК — точный порт qk_func + конвективная поправка
-# =============================================================================
+# ─── Тепловой поток ───────────────────────────────────────────────────────────
 
 def heat_flux(h_m, V):
-    """
-    q = q_turb + q_comp + q_amb  [Вт/м²]
-    q_turb, q_comp — буква в букву из qk_func (оптимизация_пенетратор.py)
-    q_amb          — конвекция от горячей атмосферы Венеры (новый член)
-    """
     ro = Get_ro(h_m)
     q_turb = (1.15e6) * (ro**0.8 / (0.5**0.2)) * (V/7328.)**3.19
     q_comp = (7.845 * 0.5) * (ro/64.79) * (V/1000.)**8
@@ -231,14 +186,12 @@ def heat_flux(h_m, V):
     return max(0., q_turb + q_comp + q_amb)
 
 def dq_dV(h_m, V):
-    """∂q/∂V аналитически. q_amb от V не зависит."""
     ro = Get_ro(h_m)
     dt = (1.15e6)*(ro**0.8/(0.5**0.2))*(3.19/7328.)*(V/7328.)**2.19
     dc = (7.845*0.5)*(ro/64.79)*(8./1000.)*(V/1000.)**7.
     return dt + dc
 
 def dq_dro(h_m, V):
-    """∂q/∂ρ аналитически (включая ∂q_amb/∂ρ через ∂T_атм/∂ρ)."""
     ro = Get_ro(h_m)
     dt = (1.15e6)*(0.8*ro**(-0.2)/(0.5**0.2))*(V/7328.)**3.19
     dc = (7.845*0.5)/64.79*(V/1000.)**8
@@ -246,10 +199,7 @@ def dq_dro(h_m, V):
     da = h_conv * (-pressure_atm(h_m)/(ro**2*R_CO2)) if T_a > T_wall else 0.
     return dt + dc + da
 
-# =============================================================================
-# УРАВНЕНИЯ ДВИЖЕНИЯ — порт dV_func/dtetta_func/dR_func (без ветра/тяги)
-# + управление K=L/D
-# =============================================================================
+# ─── Уравнения движения ───────────────────────────────────────────────────────
 
 def f_eom(V, th, R, K):
     h   = R - Rb
@@ -263,10 +213,6 @@ def f_eom(V, th, R, K):
     fQ  = heat_flux(h, V)
     return fV, fth, fR, fQ
 
-# =============================================================================
-# BANG-BANG УПРАВЛЕНИЕ И ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ (§11.4)
-# =============================================================================
-
 def Dm_V(V, R):
     h = R-Rb; ro = Get_ro(h); cx = Cx_func(V,h)
     return 0.5*ro*V*cx*S/mass
@@ -277,9 +223,7 @@ def sigma(V, R, pt):
 def bang_bang(sg):
     return K_MAX if sg < 0. else 0.
 
-# =============================================================================
-# СОПРЯЖЁННЫЕ УРАВНЕНИЯ  ψ̇ = −∂H/∂x  (аналитически, §11.3)
-# =============================================================================
+# ─── Сопряжённые уравнения ────────────────────────────────────────────────────
 
 def adjoint_rhs(V, th, R, pV, pt, pR, K):
     h    = R-Rb
@@ -308,9 +252,7 @@ def hamiltonian(V, th, R, pV, pt, pR, K):
     fV,fth,fR,fQ = f_eom(V,th,R,K)
     return pV*fV + pt*fth + pR*fR + lambda_Q*fQ
 
-# =============================================================================
-# ИНТЕГРИРОВАНИЕ ТРАЕКТОРИИ (РК4, адаптивный шаг)
-# =============================================================================
+# ─── Интегрирование траектории ────────────────────────────────────────────────
 
 def integrate_traj(K_sc, t_sw, save=False):
     V=V0; th=theta0; R=Rb+h0; Q=0.; t=0.
@@ -352,12 +294,9 @@ def integrate_traj(K_sc, t_sw, save=False):
         return V,th,R,Q,t,hist
     return V,th,R,Q,t
 
-# =============================================================================
-# ОБРАТНОЕ ИНТЕГРИРОВАНИЕ СОПРЯЖЁННЫХ (устойчиво, §14.3)
-# =============================================================================
+# ─── Обратное интегрирование сопряжённых ─────────────────────────────────────
 
 def integrate_adjoint_bwd(hist):
-    """Radau, τ=T−t → t, терм. условия ψ(T)=(−λ_V,0,0)."""
     ta = hist['t']; T = float(ta[-1])
     Vi  = interp1d(ta, hist['V'],            kind='linear', fill_value='extrapolate')
     thi = interp1d(ta, hist['theta_deg']*DEG,kind='linear', fill_value='extrapolate')
@@ -381,12 +320,7 @@ def integrate_adjoint_bwd(hist):
                     for i,ti in enumerate(t_)])
     return {'t':t_,'pV':pV_,'pt':pt_,'pR':pR_,'Sigma':Sg_}
 
-# =============================================================================
-# ОПТИМИЗАЦИЯ ПО ВРЕМЕНАМ ПЕРЕКЛЮЧЕНИЯ (DE + Нелдер-Мид)
-# p=[τ₁, τ₂, flag] ∈ [0,1]³
-#   τᵢ = tᵢ/T_EST;  flag<0.5 → K₀=0, flag≥0.5 → K₀=K_MAX
-#   τ₁<τ₂ → 2 переключения;  τ₁≥τ₂ → 1 переключение
-# =============================================================================
+# ─── Оптимизация ─────────────────────────────────────────────────────────────
 
 def criterion(V,Q): return lambda_Q*Q - lambda_V*V
 
@@ -417,20 +351,23 @@ def solve_pmp():
 
     print('\nФаза 1 — дифференциальная эволюция ...')
     t0=time.time()
-    _ctx = _mp.get_context('fork')
+
+    # [CROSS-PLATFORM] Используем кросс-платформенный контекст
+    _ctx  = _mp_ctx()
     _pool = _ctx.Pool()
-    rd = differential_evolution(cost,[(0.,1.)]*3,
-         maxiter=800,tol=1e-12,seed=17,popsize=20,
-         mutation=(0.4,1.6),recombination=0.9,
+    rd = differential_evolution(cost, [(0.,1.)]*3,
+         maxiter=800, tol=1e-12, seed=17, popsize=20,
+         mutation=(0.4,1.6), recombination=0.9,
          updating='deferred',
-         workers=_pool.map,disp=False,polish=False)
+         workers=_pool.map,           # Pool.map пикабелен на любой платформе
+         disp=False, polish=False)
     _pool.close()
     _pool.join()
     print(f'  {time.time()-t0:.1f}с  J={rd.fun:.6e}  p={np.round(rd.x,4)}')
 
     print('Фаза 2 — Нелдер-Мид ...')
     t0=time.time()
-    rn = minimize(cost,rd.x,method='Nelder-Mead',
+    rn = minimize(cost, rd.x, method='Nelder-Mead',
                   options=dict(xatol=1e-13,fatol=1e-15,maxiter=200_000,adaptive=True))
     print(f'  {time.time()-t0:.1f}с  J={rn.fun:.6e}  p={np.round(rn.x,4)}')
 
@@ -445,15 +382,12 @@ def solve_pmp():
         print(f'\n  K={K0:.2f} →[{tsw[0]:.2f}с]→ K={K1:.2f}')
     return Ksc,tsw,rn
 
-# =============================================================================
-# ГРАФИКИ
-# =============================================================================
+# ─── Графики ──────────────────────────────────────────────────────────────────
 
 def plot_results(ho, adj, hb, Ksc, tsw):
     VT=ho['V'][-1]; QT=ho['Q'][-1]
     Vb=hb['V'][-1]; Qb=hb['Q'][-1]
     Tf=ho['t'][-1]
-    # ψ в момент T
     iT = np.argmin(np.abs(adj['t']-Tf))
     pVT,ptT,pRT = adj['pV'][iT],adj['pt'][iT],adj['pR'][iT]
 
@@ -482,7 +416,6 @@ def plot_results(ho, adj, hb, Ksc, tsw):
 
     to=ho['t']; tb=hb['t']
 
-    # ─── Рис.1: Траектория и динамика ─────────────────────────────────────────
     fig1,axs=plt.subplots(2,3,figsize=(17,10)); fig1.suptitle(sup,fontsize=10)
 
     ax=axs[0,0]
@@ -516,7 +449,6 @@ def plot_results(ho, adj, hb, Ksc, tsw):
     h1,l1=ax.get_legend_handles_labels(); h2,l2=ax2.get_legend_handles_labels()
     ax.legend(h1+h2,l1+l2,fontsize=9); ax.grid(True)
 
-    # Составляющие нагрева
     ro_o=np.array([Get_ro(h) for h in ho['h']])
     Vo=ho['V']
     qt=[(1.15e6)*(r**0.8/(0.5**0.2))*(V/7328.)**3.19 for r,V in zip(ro_o,Vo)]
@@ -542,7 +474,6 @@ def plot_results(ho, adj, hb, Ksc, tsw):
     ax.set_title('Суммарный тепловой поток'); ax.legend(fontsize=10); ax.grid(True)
     plt.tight_layout()
 
-    # ─── Рис.2: Сопряжённые переменные ────────────────────────────────────────
     fig2,ax2s=plt.subplots(1,4,figsize=(19,5))
     fig2.suptitle('Сопряжённые переменные ψ(t) и гамильтониан — верификация ПМП (§11.3)',
                   fontsize=12)
@@ -563,7 +494,6 @@ def plot_results(ho, adj, hb, Ksc, tsw):
     ax2s[2].set_xlabel('Время, с'); ax2s[2].set_ylabel(r'$\psi_R\times10^6$')
     ax2s[2].set_title(r'$\psi_R(t)$'); ax2s[2].legend(fontsize=10); ax2s[2].grid(True)
 
-    # H(t) вдоль оптимальной траектории
     Vi_=interp1d(to,ho['V'],fill_value='extrapolate')
     ti_=interp1d(to,ho['theta_deg']*DEG,fill_value='extrapolate')
     Ri_=interp1d(to,ho['h']+Rb,fill_value='extrapolate')
@@ -579,6 +509,8 @@ def plot_results(ho, adj, hb, Ksc, tsw):
     plt.show()
 
 
+# [CROSS-PLATFORM] Функции-обёртки на уровне модуля — обязательно для pickle
+# при spawn-контексте (Windows/macOS). С fork они тоже работают.
 def _traj_opt(args):
     Ksc, tsw = args
     return integrate_traj(Ksc, tsw, save=True)
@@ -586,12 +518,18 @@ def _traj_opt(args):
 def _traj_ball(_):
     return integrate_traj([0.], [], save=True)
 
+
 if __name__ == '__main__':
+    # [CROSS-PLATFORM] freeze_support() нужен при упаковке в .exe (PyInstaller)
+    # и безвреден при обычном запуске. Вызывать первым в __main__.
+    _mp.freeze_support()
+
     t0 = time.time()
     Ksc, tsw, _ = solve_pmp()
 
     print('\nПараллельное интегрирование траекторий ...')
-    ctx = _mp.get_context('fork')
+    # [CROSS-PLATFORM] Используем _mp_ctx() вместо хардкодированного 'fork'
+    ctx = _mp_ctx()
     with ProcessPoolExecutor(max_workers=2, mp_context=ctx) as exe:
         fut_opt  = exe.submit(_traj_opt,  (Ksc, tsw))
         fut_ball = exe.submit(_traj_ball, None)
