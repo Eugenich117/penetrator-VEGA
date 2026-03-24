@@ -1,25 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-=============================================================================
-ПМП-ОПТИМИЗАЦИЯ СПУСКА ПЕНЕТРАТОРА В АТМОСФЕРУ ВЕНЕРЫ
-Исправленные физические и математические модели.
-ИЗМЕНЕНИЯ:
-  - Геометрия пенетратора: d=0.27 м, угол полураствора конуса Qk=15°
-  - Cx_func: заменена на физически обоснованную модель по режимам обтекания
-    (перенесено из modifikatsiia-korpusa-penetratora-2.py)
-  - Число Маха: M = V / v_sound(h)  — формула идентична в обоих файлах,
-    но теперь явно используется в Cx_func вместо табличной интерполяции
-  - dCx_dM_func: обновлена до численного дифференцирования новой Cx_func
-  - r_nose обновлён до r1 (радиус носка конуса) для тепловых расчётов
-=============================================================================
+Оптимизация начальных условий входа зонда-пенетратора (Венера).
+Управление ОТСУТСТВУЕТ — чисто баллистическое неуправляемое движение.
+Оптимизируемые параметры: V0 (скорость входа), theta0 (угол входа).
+Критерий: J = lambda_Q * Q(T) - lambda_V * V(T) → min
+  (минимум суммарного теплового нагрева и максимум скорости при контакте)
 """
 
-import math, sys, time
+import math
+import sys
+import time
 import numpy as np
 from scipy.optimize import differential_evolution, minimize
-from scipy.integrate import solve_ivp
-from scipy.interpolate import interp1d
 import matplotlib
 import matplotlib.font_manager as _fm
 import matplotlib.pyplot as plt
@@ -29,52 +22,66 @@ from concurrent.futures import ProcessPoolExecutor
 
 warnings.filterwarnings('ignore')
 
+
 def _select_font():
     available = {f.name for f in _fm.fontManager.ttflist}
     for name in ('Times New Roman', 'DejaVu Serif', 'Georgia', 'serif'):
-        if name in available: return name
+        if name in available:
+            return name
     return 'serif'
 
-matplotlib.rcParams.update({'font.family': _select_font(), 'font.size': 13})
+
+matplotlib.rcParams.update({'font.family': _select_font(), 'font.size': 12})
+
 
 def _mp_ctx():
     if sys.platform in ('win32', 'darwin'):
         return _mp.get_context('spawn')
     return _mp.get_context('fork')
 
-# ─── Параметры аппарата ───────────────────────────────────────────────────────
-Rb = 6_051_800.0
-g0 = 8.87
-mass = 120.0
 
-# ИЗМЕНЕНО: d=0.27 м, угол полураствора конуса 15°
-d_body         = 0.27                          # диаметр корпуса (миделя), м
-Qk             = 15.0 * math.pi / 180.0        # угол полураствора конуса, рад
-r1             = 0.01                          # радиус носка конуса, м
-r2             = d_body / 2.0                  # радиус основания конуса = 0.135 м
-Long_penetrator = (r2 - r1) / math.tan(Qk)    # длина конической части ≈ 0.4666 м
-S              = math.pi * r2 ** 2             # площадь миделевого сечения, м²
-r_nose         = r1                            # радиус носка для теплового расчёта
+# ─── Параметры Венеры и аппарата ──────────────────────────────────────────────
+Rb = 6_051_800.0          # радиус Венеры, м
+G0 = 8.87                 # ускорение свободного падения у поверхности, м/с²
+mass = 120.0              # масса аппарата, кг
 
-h0      = 125_000.0
-V0      = 11_000.0
-theta0  = -19.0 * math.pi / 180.0
+d_body = 0.27             # диаметр корпуса, м
+Qk = 15.0 * math.pi / 180.0          # полуугол конуса носовой части, рад
+r1 = 0.01                 # радиус кончика носа, м
+r2 = d_body / 2.0         # радиус корпуса, м
+Long_penetrator = (r2 - r1) / math.tan(Qk)   # длина конической части, м
+S = math.pi * r2 ** 2     # характерная площадь, м²
+r_nose = r1               # радиус кривизны носа для теплового расчёта, м
 
-h_conv  = 80.0
-T_wall  = 600.0
-R_CO2   = 188.9
+# Параметры стенки (для конвективного нагрева от атмосферы)
+h_conv = 80.0             # коэффициент теплообмена, Вт/(м²·К)
+T_wall = 600.0            # температура стенки, К
+R_CO2 = 188.9             # газовая постоянная CO2, Дж/(кг·К)
 
-lambda_V = 1.0
-lambda_Q = 5.0e-6
-K_MAX    = 0.30
+# Весовые коэффициенты критерия оптимальности
+lambda_V = 1.0            # вес скорости приземления (максимизировать)
+lambda_Q  = 5.0e-6        # вес суммарного нагрева (минимизировать)
 
-DT       = 0.2
-DT_FINE  = 0.02
-T_MAX    = 3_500.0
-T_EST    = 130.0
-DEG      = math.pi / 180.0
+# Параметры интегрирования
+DT = 0.2                  # базовый шаг, с
+DT_FINE = 0.02            # уточнённый шаг на малых высотах (<3 км), с
+T_MAX = 3500.0            # максимальное время полёта, с
+DEG = math.pi / 180.0
 
-# ─── Таблицы атмосферы ────────────────────────────────────────────────────────
+# ─── Фиксированная высота входа и базовая точка ───────────────────────────────
+# ВНИМАНИЕ: h0 НЕ является оптимизируемым параметром.
+# Оптимизируются только V0 и theta0.
+h0_ref     = 125_000.0   # высота входа в атмосферу (фиксирована), м
+V0_ref     = 11_000.0    # базовая скорость входа, м/с
+theta0_ref = -19.0 * DEG  # базовый угол входа, рад
+
+# ─── Диапазоны ТОЛЬКО для V0 и theta0 ────────────────────────────────────────
+BOUNDS = [
+    (9_000.0,  11_500.0),          # V0, м/с
+    (-30.0 * DEG, -5.0 * DEG),     # theta0, рад
+]
+
+# ─── Таблицы атмосферы Венеры ─────────────────────────────────────────────────
 _H = [130, 128, 126, 124, 122, 120, 118, 116, 114, 112, 110, 108, 106, 104, 102,
       100,  98,  96,  94,  92,  90,  88,  86,  84,  82,  80,  78,  76,  74,  72,
        70,  68,  66,  64,  62,  60,  58,  56,  54,  52,  50,  48,  46,  44,  42,
@@ -116,15 +123,10 @@ _PRES = [0.0019907, 0.005, 0.10, 0.30, 0.50, 0.70, 0.90, 1.10, 1.30, 1.50, 1.70,
          5081000.0, 5444000.0, 5828000.0, 6235000.0, 6665000.0, 7120000.0,
          7601000.0, 8109000.0, 8645000.0, 9210000.0]
 
-# Старые табличные данные Cx(M) — оставлены для справки, не используются
-# _CX_M = [0.0, 0.2, 0.4, 0.6, 1.0, 1.2, 1.4, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8,
-#           3.2, 3.6, 4.0, 4.4, 4.8, 5.2, 6.0]
-# _CX_V = [0.75, 0.9, 1.1, 1.3, 1.45, 1.52, 1.55, 1.6, 1.7, 1.8, 1.78,
-#           1.75, 1.7, 1.65, 1.6, 1.55, 1.52, 1.52, 1.52, 1.52]
 
-# ─── Интерполяция ─────────────────────────────────────────────────────────────
-
+# ─── Интерполяция (4-точечный полином Ньютона) ────────────────────────────────
 def _n4(x_tbl, y_tbl, xi):
+    """Интерполяция по 4 ближайшим точкам методом Ньютона."""
     n = len(x_tbl)
     idx = None
     for i in range(n):
@@ -149,469 +151,368 @@ def _n4(x_tbl, y_tbl, xi):
         res = res * (xi - xp[i]) + yp[i]
     return res
 
-def _n2(x_tbl, y_tbl, xi):
-    for i in range(len(x_tbl)):
-        if x_tbl[i] >= xi:
-            i0 = max(i - 1, 0)
-            i1 = min(i, len(x_tbl) - 1)
-            if i == 0: i0, i1 = 0, 1
-            x0, x1 = x_tbl[i0], x_tbl[i1]
-            if x1 == x0: return y_tbl[i0]
-            return y_tbl[i0] + (y_tbl[i1] - y_tbl[i0]) / (x1 - x0) * (xi - x0)
-    return y_tbl[-1]
-
-# ─── Функции атмосферы ────────────────────────────────────────────────────────
 
 def Get_ro(h_m):
-    h_km = max(0., min(130., h_m / 1000.))
-    return max(_n4(_H, _RHO, h_km), 1e-14)
+    """Плотность атмосферы Венеры, кг/м³."""
+    h_km = max(0.0, min(130.0, h_m / 1000.0))
+    return max(_n4(_H, _RHO[:], h_km), 1e-14)
+
 
 def v_sound(h_m):
-    h_km = max(0., min(130., h_m / 1000.))
-    return max(_n4(_H, _VS, h_km), 1.)
+    """Скорость звука, м/с."""
+    h_km = max(0.0, min(130.0, h_m / 1000.0))
+    return max(_n4(_H, _VS[:], h_km), 1.0)
+
 
 def pressure_atm(h_m):
-    h_km = max(0., min(130., h_m / 1000.))
-    return max(_n4(_H, _PRES, h_km), 0.)
+    """Атмосферное давление, Па."""
+    h_km = max(0.0, min(130.0, h_m / 1000.0))
+    return max(_n4(_H, _PRES[:], h_km), 0.0)
+
 
 def T_atm(h_m):
+    """Температура атмосферы через уравнение состояния идеального газа, К."""
     ro = Get_ro(h_m)
     return pressure_atm(h_m) / (ro * R_CO2)
 
-def dro_dh(h_m):
-    eps = 500.
-    return (Get_ro(min(h_m + eps, 130000.)) - Get_ro(max(h_m - eps, 0.))) / (2. * eps)
 
-# ─── Аэродинамика: физически обоснованный Cx (перенесено из modifikatsiia-korpusa-penetratora-2.py)
-# СРАВНЕНИЕ ПОДХОДОВ:
-#   Старый (optimizatsiia): M = V / v_sound(h) → _n2(_CX_M, _CX_V, M)  — таблица, не зависит от геометрии
-#   Новый  (modifikatsiia): M = V / V_sound    → 4 режима обтекания с учётом Qk, r1, r2, Long_penetrator
-#   Формула числа Маха идентична: M = V / V_sound(h). Отличается только модель Cx.
-
+# ─── Аэродинамика: коэффициент лобового сопротивления ────────────────────────
 def Cx_func(V, h_m):
     """
-    Физически обоснованный коэффициент лобового сопротивления конического пенетратора.
-    Перенесено из modifikatsiia-korpusa-penetratora-2.py (функция Cx).
-    Число Маха: M = V / v_sound(h_m)  — идентично обоим файлам.
-    Cx зависит от режима обтекания и геометрии конуса (Qk, r1, r2, Long_penetrator).
+    Cx в зависимости от числа Маха.
+    M < 0.8 — дозвук (ньютоновский + трение)
+    0.8–1.2 — трансзвук (плавный переход)
+    1.2–5   — сверхзвук (волновое + трение)
+    M > 5   — гиперзвук (ньютоновский с поправкой на сжатие)
     """
     vs = v_sound(h_m)
-    M = V / vs  # Число Маха — M = V / V_sound
-
-    # 1. Дозвуковой режим (M < 0.8)
+    M = V / vs
     if M < 0.8:
         Cx_form = 0.8 * math.sin(Qk) ** 2
-        Re_approx = 1e6
-        Cx_friction = 0.074 / Re_approx ** 0.2 * (Long_penetrator / (2.0 * r2))
-        Cx_base = Cx_form + Cx_friction
-        return min(Cx_base * (0.7 + 0.3 * (M / 0.8)), 1.0)
-
-    # 2. Трансзвуковой режим (0.8 ≤ M < 1.2)
+        Cx_friction = 0.074 / (1e6 ** 0.2) * (Long_penetrator / (2.0 * r2))
+        return min((Cx_form + Cx_friction) * (0.7 + 0.3 * (M / 0.8)), 1.0)
     elif M < 1.2:
-        Cx_subsonic   = 0.8 * math.sin(Qk) ** 2
-        Cx_supersonic = 2.0 * math.sin(Qk) ** 2 / math.sqrt(M ** 2 - 0.5)
+        Cx_sub = 0.8 * math.sin(Qk) ** 2
+        Cx_sup = 2.0 * math.sin(Qk) ** 2 / math.sqrt(M ** 2 - 0.5)
         t = (M - 0.8) / 0.4
-        peak_factor = 1.0 + 2.0 * math.sin(math.pi * (M - 0.9) / 0.2) ** 2
-        return min(Cx_subsonic + (Cx_supersonic - Cx_subsonic) * t * peak_factor, 2.5)
-
-    # 3. Сверхзвуковой режим (1.2 ≤ M < 5.0)
+        peak = 1.0 + 2.0 * math.sin(math.pi * (M - 0.9) / 0.2) ** 2
+        return min(Cx_sub + (Cx_sup - Cx_sub) * t * peak, 2.5)
     elif M < 5.0:
-        beta        = math.sqrt(M ** 2 - 1.0)
-        Cp_cone     = 2.0 * math.sin(Qk) ** 2 / beta
-        Cx_pressure = Cp_cone * math.sin(Qk)
+        beta = math.sqrt(M ** 2 - 1.0)
+        Cp_cone = 2.0 * math.sin(Qk) ** 2 / beta
         Cx_friction = 0.03 / (M * 1e6) ** 0.2 * (Long_penetrator / (2.0 * r2))
-        return min(Cx_pressure + Cx_friction, 1.5)
-
-    # 4. Гиперзвуковой режим (M ≥ 5.0)
+        return min(Cp_cone * math.sin(Qk) + Cx_friction, 1.5)
     else:
         Cx_newton = 2.0 * math.sin(Qk) ** 2
         gamma_gas = 1.4
-        compression_factor = 1.0 + 0.5 / (gamma_gas * M ** 2 * math.sin(Qk) ** 2)
-        return min(Cx_newton * compression_factor, 2.0)
+        compr = 1.0 + 0.5 / (gamma_gas * M ** 2 * math.sin(Qk) ** 2)
+        return min(Cx_newton * compr, 2.0)
 
-def dCx_dM_func(M, h_m=50_000.0):
-    """
-    Численная производная dCx/dM д��я сопряжённых уравнений.
-    Обновлено: используется численное дифференцирование новой Cx_func,
-    поскольку физически обоснованная формула не допускает удобного
-    аналитического дифференцирования.
-    Аргумент h_m передаётся из adjoint_rhs для точного значения v_sound.
-    """
-    eps = 1e-5
-    vs = v_sound(h_m)
-    V_p = (M + eps) * vs
-    V_m = max((M - eps) * vs, 1.0)
-    return (Cx_func(V_p, h_m) - Cx_func(V_m, h_m)) / (2.0 * eps * vs)
 
 # ─── Тепловой поток ───────────────────────────────────────────────────────────
-# r_nose = r1 = 0.01 м — радиус носка конического пенетратора (обновлено)
-
 def heat_flux(h_m, V):
+    """
+    Суммарный тепловой поток в точке торможения, Вт/м².
+
+    q = q_turb + q_comp + q_amb
+
+    q_turb — турбулентный конвективный нагрев при около-параболических скоростях
+             (формула Воронцова, применима для CO2-атмосферы):
+             q_turb = 1.15e6 * rho^0.8 / r_nose^0.2 * (V/Vc)^3.19
+             где Vc = 7328 м/с — вторая космическая скорость Венеры,
+             rho [кг/м³], r_nose [м].
+
+    q_comp — нагрев за ударной волной (компрессионный/радиационный),
+             значим при V > 8 км/с:
+             q_comp = 7.845 * r_nose * (rho/rho0) * (V/1000)^8
+             где rho0 = 64.79 кг/м³ — плотность у поверхности Венеры.
+
+    q_amb  — конвективный нагрев от горячей атмосферы (важен ниже ~15 км,
+             где T_atm > T_wall):
+             q_amb = h_conv * max(0, T_atm - T_wall)
+    """
     ro = Get_ro(h_m)
-    q_turb = (1.15e6) * (ro ** 0.8 / (r_nose ** 0.2)) * (V / 7328.) ** 3.19
-    q_comp = (7.845 * r_nose) * (ro / 64.79) * (V / 1000.) ** 8
-    q_amb  = h_conv * max(0., T_atm(h_m) - T_wall)
-    return max(0., q_turb + q_comp + q_amb)
 
-def dq_dV(h_m, V):
-    ro = Get_ro(h_m)
-    dt = (1.15e6) * (ro ** 0.8 / (r_nose ** 0.2)) * (3.19 / 7328.) * (V / 7328.) ** 2.19
-    dc = (7.845 * r_nose) * (ro / 64.79) * (8. / 1000.) * (V / 1000.) ** 7.
-    return dt + dc
+    # Турбулентный нагрев (Воронцов, при нулевом угле атаки)
+    q_turb = 1.15e6 * (ro ** 0.8 / (r_nose ** 0.2)) * (V / 7328.0) ** 3.19
 
-def dq_dro(h_m, V):
-    ro  = Get_ro(h_m)
-    dt  = (1.15e6) * (0.8 * ro ** (-0.2) / (r_nose ** 0.2)) * (V / 7328.) ** 3.19
-    dc  = (7.845 * r_nose) / 64.79 * (V / 1000.) ** 8
-    T_a = T_atm(h_m)
-    da  = h_conv * (-pressure_atm(h_m) / (ro ** 2 * R_CO2)) if T_a > T_wall else 0.
-    return dt + dc + da
+    # Компрессионный (радиационный) нагрев за ударной волной
+    q_comp = (7.845 * r_nose) * (ro / 64.79) * (V / 1000.0) ** 8
 
-# ─── Уравнения движения ───────────────────────────────────────────────────────
+    # Конвективный нагрев от атмосферы (нижние слои Венеры)
+    q_amb = h_conv * max(0.0, T_atm(h_m) - T_wall)
 
-def f_eom(V, th, R, K):
-    h   = R - Rb
-    ro  = Get_ro(h)
-    cx  = Cx_func(V, h)
-    gR  = g0 * (Rb / R) ** 2
-    Dm  = 0.5 * ro * V ** 2 * cx * S / mass
-    fV  = -gR * math.sin(th) - Dm
-    fth = -(gR / V) * math.cos(th) + (V / R) * math.cos(th) + K * Dm / V
-    fR  = V * math.sin(th)
-    fQ  = heat_flux(h, V)
-    return fV, fth, fR, fQ
+    return max(0.0, q_turb + q_comp + q_amb)
 
-def Dm_V(V, R):
-    h  = R - Rb
+
+# ─── Уравнения баллистического движения (без управления, без подъёмной силы) ─
+def f_eom(V, th, R):
+    """
+    Правые части системы ОДУ баллистического движения в сферическом поле тяготения.
+
+    Переменные состояния:
+      V   — скорость [м/с]
+      th  — угол наклона траектории к горизонту [рад], отрицателен при снижении
+      R   — расстояние от центра планеты [м]
+
+    Уравнения:
+      dV/dt  = -D/m - g·sin(θ)
+             D/m = 0.5·ρ·V²·Cx·S / m  (аэродинамическое торможение)
+
+      dθ/dt  = cos(θ)·(V/R - g/V)
+             (центробежный член V/R — гравитационный член g/V; подъёмная сила L=0)
+
+      dR/dt  = V·sin(θ)
+             (при θ<0 скорость снижения отрицательная — R убывает)
+
+      dQ/dt  = q(h, V)
+             (накопленный тепловой нагрев по траектории)
+    """
+    h = R - Rb
     ro = Get_ro(h)
     cx = Cx_func(V, h)
-    return 0.5 * ro * V * cx * S / mass
+    gR = G0 * (Rb / R) ** 2          # гравитация на высоте R
+    Dm = 0.5 * ro * V ** 2 * cx * S / mass   # аэродинамическое ускорение
 
-def sigma(V, R, pt):
-    return pt * Dm_V(V, R)
+    fV  = -gR * math.sin(th) - Dm                          # dV/dt
+    fth = math.cos(th) * (V / R - gR / V)                  # dθ/dt  (исправлено: вынесен cos(th))
+    fR  = V * math.sin(th)                                  # dR/dt
+    fQ  = heat_flux(h, V)                                   # dQ/dt
 
-def bang_bang(sg):
-    return K_MAX if sg < 0. else 0.
+    return fV, fth, fR, fQ
 
-# ─── Сопряжённые уравнения ────────────────────────────────────────────────────
 
-def adjoint_rhs(V, th, R, pV, pt, pR, K):
-    h   = R - Rb
-    ro  = Get_ro(h)
-    cx  = Cx_func(V, h)
-    gR  = g0 * (Rb / R) ** 2
-    Dm  = 0.5 * ro * V ** 2 * cx * S / mass
-    dr  = dro_dh(h)
-    dDmR = Dm * dr / max(ro, 1e-14)
-
-    vs     = v_sound(h)
-    M      = V / vs
-    # ОБНОВЛЕНО: численная dCx/dM от физически обоснованной Cx_func, с учётом высоты h
-    dC_dM  = dCx_dM_func(M, h)
-    dDm_dV = (2.0 * Dm / V) + (0.5 * ro * V ** 2 * S / mass) * (dC_dM / vs)
-
-    dHdV = (pV * (-dDm_dV)
-            + pt * (gR / V ** 2 * math.cos(th) + math.cos(th) / R
-                    + K * (dDm_dV / V - Dm / V ** 2))
-            + pR * math.sin(th)
-            + lambda_Q * dq_dV(h, V))
-
-    dHdth = (pV * (-gR * math.cos(th))
-             + pt * (gR / V * math.sin(th) - V / R * math.sin(th))
-             + pR * V * math.cos(th))
-
-    dHdR = (pV * (2. * gR / R * math.sin(th) - dDmR)
-            + pt * (2. * gR / (V * R) * math.cos(th) - V / R ** 2 * math.cos(th)
-                    + K * dDmR / V)
-            + lambda_Q * dq_dro(h, V) * dr)
-
-    return -dHdV, -dHdth, -dHdR
-
-def hamiltonian(V, th, R, pV, pt, pR, K):
-    fV, fth, fR, fQ = f_eom(V, th, R, K)
-    return pV * fV + pt * fth + pR * fR + lambda_Q * fQ
-
-# ─── Интегрирование траектории ────────────────────────────────────────────────
-
-def integrate_traj(K_sc, t_sw, save=False):
-    V = V0; th = theta0; R = Rb + h0; Q = 0.; t = 0.
-    sw = sorted(t_sw)
-
-    def curK(t_):
-        idx = sum(1 for ts in sw if t_ >= ts)
-        return K_sc[min(idx, len(K_sc) - 1)]
+# ─── Интегрирование траектории (RK4) ──────────────────────────────────────────
+def integrate_traj(h0, V0, theta0, save=False):
+    """
+    Интегрирует баллистическую траекторию от h0 до поверхности.
+    Возвращает: V, theta, R, Q_total, t [, hist если save=True]
+    """
+    V  = float(V0)
+    th = float(theta0)
+    R  = Rb + float(h0)
+    Q  = 0.0
+    t  = 0.0
 
     if save:
-        hist = {k: [] for k in ('t', 'V', 'theta_deg', 'h', 'Q', 'K')}
+        hist = {k: [] for k in ('t', 'V', 'theta_deg', 'h', 'Q', 'q')}
 
         def rec():
-            hist['t'].append(t);   hist['V'].append(V)
-            hist['theta_deg'].append(th / DEG); hist['h'].append(R - Rb)
-            hist['Q'].append(Q);   hist['K'].append(curK(t))
+            hist['t'].append(t)
+            hist['V'].append(V)
+            hist['theta_deg'].append(th / DEG)
+            hist['h'].append(R - Rb)
+            hist['Q'].append(Q)
+            hist['q'].append(heat_flux(R - Rb, V))
         rec()
 
-    while R > Rb and t < T_MAX:
-        K  = curK(t)
-        h_ = R - Rb
-        dt = DT_FINE if h_ < 3000 else DT
-        for ts in sw:
-            if t < ts < t + dt: dt = ts - t + 1e-9
+    while R > Rb and t < T_MAX and V > 1.0:
+        dt = DT_FINE if (R - Rb) < 3_000.0 else DT
 
-        k1 = f_eom(V, th, R, K)
-        k2 = f_eom(V + .5*dt*k1[0], th + .5*dt*k1[1], R + .5*dt*k1[2], K)
-        k3 = f_eom(V + .5*dt*k2[0], th + .5*dt*k2[1], R + .5*dt*k2[2], K)
-        k4 = f_eom(V +    dt*k3[0], th +    dt*k3[1], R +    dt*k3[2], K)
-        c = dt / 6.
+        k1 = f_eom(V,                   th,                   R)
+        k2 = f_eom(V + 0.5*dt*k1[0],  th + 0.5*dt*k1[1],  R + 0.5*dt*k1[2])
+        k3 = f_eom(V + 0.5*dt*k2[0],  th + 0.5*dt*k2[1],  R + 0.5*dt*k2[2])
+        k4 = f_eom(V +     dt*k3[0],  th +     dt*k3[1],  R +     dt*k3[2])
+        c  = dt / 6.0
+
         V  += c * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
         th += c * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
         R  += c * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
         Q  += c * (k1[3] + 2*k2[3] + 2*k3[3] + k4[3])
         t  += dt
-        if R <= Rb: R = Rb
-        if save: rec()
+
+        if R <= Rb:
+            R = Rb
+
+        if save:
+            rec()
 
     if save:
-        for k in hist: hist[k] = np.array(hist[k])
+        for k in hist:
+            hist[k] = np.array(hist[k])
         return V, th, R, Q, t, hist
     return V, th, R, Q, t
 
-# ─── Обратное интегрирование сопряжённых ─────────────────────────────────────
 
-def integrate_adjoint_bwd(hist):
-    ta = hist['t']; T = float(ta[-1])
-    Vi  = interp1d(ta, hist['V'],                    kind='linear',   fill_value='extrapolate')
-    thi = interp1d(ta, hist['theta_deg'] * DEG,     kind='linear',   fill_value='extrapolate')
-    Ri  = interp1d(ta, hist['h'] + Rb,              kind='linear',   fill_value='extrapolate')
-    Ki  = interp1d(ta, hist['K'],                   kind='previous', fill_value='extrapolate')
+# ─── Критерий оптимальности ───────────────────────────────────────────────────
+def criterion(V_surface, Q_total):
+    """
+    Скалярный критерий: J = lambda_Q * Q - lambda_V * V → min
+    Минимизация J одновременно:
+      - минимизирует суммарный тепловой нагрев Q (Дж/м²)
+      - максимизирует скорость удара о поверхность V (м/с)
+    """
+    return lambda_Q * Q_total - lambda_V * V_surface
 
-    def rhs(tau, ps):
-        tf = T - tau
-        V_  = float(Vi(tf)); th_ = float(thi(tf))
-        R_  = float(Ri(tf)); K_  = float(Ki(tf))
-        dV, dt, dR = adjoint_rhs(V_, th_, R_, ps[0], ps[1], ps[2], K_)
-        return [-dV, -dt, -dR]
 
-    sol = solve_ivp(rhs, [0., T], [-lambda_V, 0., 0.],
-                    method='Radau', dense_output=True,
-                    rtol=1e-6, atol=1e-9, max_step=2.)
-
-    ord_ = np.argsort(T - sol.t)
-    t_   = (T - sol.t)[ord_]
-    pV_  = sol.y[0][ord_]; pt_ = sol.y[1][ord_]; pR_ = sol.y[2][ord_]
-    Sg_  = np.array([pt_[i] * Dm_V(float(Vi(ti)), float(Ri(ti)))
-                     for i, ti in enumerate(t_)])
-    return {'t': t_, 'pV': pV_, 'pt': pt_, 'pR': pR_, 'Sigma': Sg_}
-
-# ─── Оптимизация ─────────────────────────────────────────────────────────────
-
-def criterion(V, Q): return lambda_Q * Q - lambda_V * V
-
-def cost(p):
-    tau1, tau2, flg = p
-    K0 = K_MAX if flg >= 0.5 else 0.; K1 = K_MAX - K0
-    t1, t2 = tau1 * T_EST, tau2 * T_EST
-    if tau1 < tau2:
-        Ksc = [K0, K1, K0]; tsw = [t1, t2]
-    else:
-        Ksc = [K0, K1]; tsw = [t1]
+def cost(x):
+    """
+    Целевая функция для оптимизатора.
+    x = [V0, theta0]  — высота входа h0 ФИКСИРОВАНА (h0_ref).
+    """
+    V0, theta0 = x          # только 2 переменные
     try:
-        V_, _, _, Q_, _ = integrate_traj(Ksc, tsw, save=False)
-    except:
-        return 1e10
-    if not (0 < V_ < 20000) or Q_ < 0: return 1e10
-    return criterion(V_, Q_)
+        V, _, R, Q, _ = integrate_traj(h0_ref, V0, theta0, save=False)
+    except Exception:
+        return 1e12
+    pen = 0.0
+    if R > Rb + 1.0:         # аппарат не достиг поверхности
+        pen += 1e8 + 1e4 * (R - Rb)
+    if V <= 0.0 or not np.isfinite(V):
+        pen += 1e8
+    return criterion(V, Q) + pen
 
-def solve_pmp():
-    sep = '═' * 64
+
+# ─── Оптимизация начальных условий ───────────────────────────────────────────
+def optimize_initial_conditions():
+    sep = '═' * 60
     print(sep)
-    print(' ПМП-ОПТИМИЗАЦИЯ СПУСКА ПЕНЕТРАТОРА (ВЕНЕРА)')
-    print(f' V₀={V0:.0f} м/с θ₀={theta0/DEG:.0f}° h₀={h0/1000:.0f} км')
-    print(f' d={d_body:.3f} м  r2={r2:.4f} м  Qk={Qk/DEG:.1f}°  L_pen={Long_penetrator:.4f} м')
-    print(f' λ_V={lambda_V} λ_Q={lambda_Q:.1e} K_max={K_MAX}')
-    print(f' Нагрев: q_turb + q_comp + q_amb(атм. Венеры)  r_nose={r_nose:.4f} м')
+    print(' ОПТИМИЗАЦИЯ НАЧАЛЬНЫХ УСЛОВИЙ СПУСКА (БЕЗ УПРАВЛЕНИЯ)')
+    print(f' Критерий: J = lambda_Q·Q(T) - lambda_V·V(T) → min')
+    print(f' lambda_V={lambda_V:.3f}, lambda_Q={lambda_Q:.3e}')
+    print(f' h0 = {h0_ref/1000:.0f} км (фиксирована)')
+    print(f' V0   = [{BOUNDS[0][0]:.0f}, {BOUNDS[0][1]:.0f}] м/с')
+    print(f' theta0 = [{BOUNDS[1][0]/DEG:.1f}, {BOUNDS[1][1]/DEG:.1f}]°')
     print(sep)
 
-    Vb, _, _, Qb, Tb = integrate_traj([0.], [], save=False)
-    print(f' Баллист.: T={Tb:.0f}с V={Vb:.2f}м/с Q={Qb/1e6:.4f}МДж/м² \'
-          f'J={criterion(Vb, Qb):+.4e}')
+    Vb, _, _, Qb, _ = integrate_traj(h0_ref, V0_ref, theta0_ref)
+    print(f' Базовый: V={Vb:.2f} м/с, Q={Qb/1e6:.4f} МДж/м², J={criterion(Vb, Qb):+.4e}')
 
-    print('\nФаза 1 — дифференциальная эволюция ...')
+    print('\nФаза 1 — дифференциальная эволюция (многопоточность) ...')
     t0 = time.time()
-    _ctx  = _mp_ctx()
+    _ctx = _mp_ctx()
     _pool = _ctx.Pool()
-    rd = differential_evolution(cost, [(0., 1.)] * 3,
-                                maxiter=800, tol=1e-12, seed=17, popsize=20,
-                                mutation=(0.4, 1.6), recombination=0.9,
-                                updating='deferred', workers=_pool.map,
-                                disp=False, polish=False)
-    _pool.close(); _pool.join()
-    print(f' {time.time()-t0:.1f}с J={rd.fun:.6e} p={np.round(rd.x, 4)}')
+    res_de = differential_evolution(
+        cost,
+        BOUNDS,
+        maxiter=120,
+        popsize=18,
+        tol=1e-7,
+        mutation=(0.5, 1.2),
+        recombination=0.9,
+        seed=17,
+        polish=False,
+        disp=False,
+        updating='deferred',
+        workers=_pool.map,
+    )
+    _pool.close()
+    _pool.join()
+    print(f' {time.time()-t0:.1f}с  J={res_de.fun:.6e}  x={np.round(res_de.x, 4)}')
 
     print('Фаза 2 — Нелдер-Мид ...')
     t0 = time.time()
-    rn = minimize(cost, rd.x, method='Nelder-Mead',
-                  options=dict(xatol=1e-13, fatol=1e-15, maxiter=200_000, adaptive=True))
-    print(f' {time.time()-t0:.1f}с J={rn.fun:.6e} p={np.round(rn.x, 4)}')
+    res_nm = minimize(
+        cost,
+        res_de.x,
+        method='Nelder-Mead',
+        options=dict(xatol=1e-8, fatol=1e-8, maxiter=4000, adaptive=True),
+    )
+    print(f' {time.time()-t0:.1f}с  J={res_nm.fun:.6e}  x={np.round(res_nm.x, 4)}')
+    return res_nm
 
-    tau1, tau2, flg = rn.x
-    K0 = K_MAX if flg >= 0.5 else 0.; K1 = K_MAX - K0
-    t1, t2 = tau1 * T_EST, tau2 * T_EST
-    if tau1 < tau2:
-        Ksc = [K0, K1, K0]; tsw = sorted([t1, t2])
-        print(f'\n K={K0:.2f} →[{tsw[0]:.2f}с]→ K={K1:.2f} →[{tsw[1]:.2f}с]→ K={K0:.2f}')
-    else:
-        Ksc = [K0, K1]; tsw = [t1]
-        print(f'\n K={K0:.2f} →[{tsw[0]:.2f}с]→ K={K1:.2f}')
-    return Ksc, tsw, rn
 
-# ─── Графики ──────────────────────────────────────────────────────────────────
+# ─── Параллельное интегрирование двух траекторий ─────────────────────────────
+def _run_base(_):
+    return integrate_traj(h0_ref, V0_ref, theta0_ref, save=True)
 
-def plot_results(ho, adj, hb, Ksc, tsw):
-    VT = ho['V'][-1];  QT = ho['Q'][-1]
-    Vb = hb['V'][-1];  Qb = hb['Q'][-1]
-    Tf = ho['t'][-1]
-    iT = np.argmin(np.abs(adj['t'] - Tf))
-    pVT, ptT, pRT = adj['pV'][iT], adj['pt'][iT], adj['pR'][iT]
 
-    sep = '─' * 64
+def _run_opti(x):
+    V0, theta0 = x            # h0 фиксирована
+    return integrate_traj(h0_ref, V0, theta0, save=True)
+
+
+# ─── Вспомогательные функции результатов ─────────────────────────────────────
+def _make_case(name, h0, V0, theta0, hist):
+    q_max = float(np.max(hist['q']))
+    V_f   = float(hist['V'][-1])
+    Q_f   = float(hist['Q'][-1])
+    T_f   = float(hist['t'][-1])
+    return dict(name=name, h0=h0, V0=V0, theta0_deg=theta0 / DEG,
+                Vf=V_f, Q=Q_f, q_max=q_max, T=T_f,
+                J=criterion(V_f, Q_f), hist=hist)
+
+
+def print_results(base, opti):
+    sep = '─' * 60
     print(f'\n{sep}')
-    print(f' РЕЗУЛЬТАТЫ (h_финал={ho["h"][-1]/1000:.2f}км)')
-    print(f' Геометрия: d={d_body:.3f}м, Qk={Qk/DEG:.1f}°, r2={r2:.4f}м, L={Long_penetrator:.4f}м')
+    print(f' РЕЗУЛЬТАТЫ ОПТИМИЗАЦИИ')
     print(sep)
-    print(f' {"":38s} ПМП-опт. Баллист.')
-    print(f' Скорость V(T), м/с          {VT:>12.3f} {Vb:>10.3f}')
-    print(f' Нагрев Q(T), МДж/м²         {QT/1e6:>12.4f} {Qb/1e6:>10.4f}')
-    print(f' Критерий J                  {criterion(VT,QT):>+12.4e} {criterion(Vb,Qb):>+10.4e}')
-    print(f' ΔV (ПМП−баллист.), м/с      {VT-Vb:>+12.3f}')
-    print(f' ΔQ (ПМП−баллист.), МДж/м²  {(QT-Qb)/1e6:>+11.4f}')
-    HT = hamiltonian(VT, ho['theta_deg'][-1]*DEG, Rb+ho['h'][-1], pVT, ptT, pRT, ho['K'][-1])
-    print(f'\n Верификация ПМП §11.3:')
-    print(f' ψ_V(T)={pVT:+.5f} (цель −λ_V={-lambda_V:.2f})')
-    print(f' ψ_θ(T)={ptT:+.5f} (цель 0)')
-    print(f' ψ_R(T)={pRT:+.4e} (цель 0)')
-    print(f' H(T)  ={HT:+.4e} (→0 при свободном T)')
+    print(f'  {"":<34s} Базовый     Оптимум')
+    print(f'  h0, км (фикс.)  {base["h0"]/1000:>12.3f} {opti["h0"]/1000:>10.3f}')
+    print(f'  V0, м/с         {base["V0"]:>12.3f} {opti["V0"]:>10.3f}')
+    print(f'  theta0, °       {base["theta0_deg"]:>12.3f} {opti["theta0_deg"]:>10.3f}')
+    print(f'  T, с            {base["T"]:>12.3f} {opti["T"]:>10.3f}')
+    print(f'  Vf, м/с         {base["Vf"]:>12.3f} {opti["Vf"]:>10.3f}')
+    print(f'  Q, МДж/м²       {base["Q"]/1e6:>12.6f} {opti["Q"]/1e6:>10.6f}')
+    print(f'  q_max, МВт/м²   {base["q_max"]/1e6:>12.6f} {opti["q_max"]/1e6:>10.6f}')
+    print(f'  J               {base["J"]:>+12.4e} {opti["J"]:>+10.4e}')
+    print(sep)
+    print(f'  ΔVf    = {opti["Vf"]    - base["Vf"]:+.3f} м/с')
+    print(f'  ΔQ     = {(opti["Q"]    - base["Q"]) / 1e6:+.6f} МДж/м²')
+    print(f'  Δq_max = {(opti["q_max"]- base["q_max"]) / 1e6:+.6f} МВт/м²')
     print(sep)
 
-    sw_s = ', '.join(f't={s:.1f}с' for s in tsw)
-    sup  = (f'ПМП-оптимальный вход пенетратора в атмосферу Венеры \'
-            f'[d={d_body:.2f}м, Qk={Qk/DEG:.0f}°, λ_V={lambda_V}, λ_Q={lambda_Q:.1e}, K_max={K_MAX}]\n\'
-            f'Переключения: {sw_s} | V(T)={VT:.1f}м/с Q(T)={QT/1e6:.4f}МДж/м²')
 
-    to = ho['t']; tb = hb['t']
+def plot_results(base, opti):
+    sup = (f'Оптимизация начальных условий спуска пенетратора (Венера)\n'
+           f'h0={opti["h0"]/1000:.1f} км (фикс.), V0={opti["V0"]:.0f} м/с, '
+           f'θ0={opti["theta0_deg"]:.2f}° | '
+           f'Vf={opti["Vf"]:.1f} м/с, Q={opti["Q"]/1e6:.4f} МДж/м²')
 
-    fig1, axs = plt.subplots(2, 3, figsize=(17, 10)); fig1.suptitle(sup, fontsize=10)
+    fig, axs = plt.subplots(2, 2, figsize=(14, 9))
+    fig.suptitle(sup, fontsize=10)
+    b, o = base['hist'], opti['hist']
 
     ax = axs[0, 0]
-    ax.plot(to, ho['h']/1000, 'b-', lw=2, label='ПМП-опт.')
-    ax.plot(tb, hb['h']/1000, 'k--', lw=1.5, alpha=.7, label='Баллист.')
+    ax.plot(b['t'], b['h']/1000, 'k--', lw=1.8, label='Базовый')
+    ax.plot(o['t'], o['h']/1000, 'b-',  lw=2.0, label='Оптимум')
     ax.set_xlabel('Время, с'); ax.set_ylabel('Высота, км')
-    ax.set_title('Высота от времени'); ax.legend(fontsize=10); ax.grid(True)
+    ax.set_title('Высота'); ax.grid(True); ax.legend()
 
     ax = axs[0, 1]
-    ax.plot(ho['h']/1000, ho['V']/1000, 'b-', lw=2, label='ПМП-опт.')
-    ax.plot(hb['h']/1000, hb['V']/1000, 'k--', lw=1.5, alpha=.7, label='Баллист.')
+    ax.plot(b['h']/1000, b['V']/1000, 'k--', lw=1.8, label='Базовый')
+    ax.plot(o['h']/1000, o['V']/1000, 'b-',  lw=2.0, label='Оптимум')
     ax.set_xlabel('Высота, км'); ax.set_ylabel('Скорость, км/с')
-    ax.set_title('Скорость от высоты'); ax.legend(fontsize=10); ax.grid(True)
-
-    ax = axs[0, 2]
-    ax.plot(to, ho['theta_deg'], 'g-', lw=2, label='ПМП-опт.')
-    ax.plot(tb, hb['theta_deg'], 'k--', lw=1.5, alpha=.7, label='Баллист.')
-    ax.set_xlabel('Время, с'); ax.set_ylabel('θ, °')
-    ax.set_title('Траекторный угол'); ax.legend(fontsize=10); ax.grid(True)
+    ax.set_title('Скорость'); ax.grid(True); ax.legend()
 
     ax = axs[1, 0]
-    ax.step(to, ho['K'], 'r-', lw=2.5, where='post', label='K(t)')
-    ax.axhline(K_MAX, color='darkred', ls=':', lw=1.2, label=f'K_max={K_MAX}')
-    for s in tsw: ax.axvline(s, color='orange', ls='--', lw=1.2, alpha=.8)
-    ax2 = ax.twinx()
-    ax2.plot(adj['t'], adj['Sigma'], 'm-', lw=1.2, alpha=.8, label='Σ(t)')
-    ax2.axhline(0, color='purple', ls=':', lw=1)
-    ax2.set_ylabel('Σ = ψ_θ·D_m/V', color='m', fontsize=11)
-    ax.set_xlabel('Время, с'); ax.set_ylabel('K = L/D')
-    ax.set_title('Управление и функция переключения')
-    h1, l1 = ax.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1+h2, l1+l2, fontsize=9); ax.grid(True)
-
-    ro_o = np.array([Get_ro(h) for h in ho['h']])
-    Vo   = ho['V']
-    qt      = [(1.15e6)*(r**0.8/(r_nose**0.2))*(V/7328.)**3.19       for r, V in zip(ro_o, Vo)]
-    qc      = [(7.845*r_nose)*(r/64.79)*(V/1000.)**8                 for r, V in zip(ro_o, Vo)]
-    qa      = [h_conv*max(0., T_atm(h)-T_wall)                       for h in ho['h']]
-    q_tot   = [heat_flux(h, V)                                        for h, V in zip(ho['h'], Vo)]
-    q_ball  = [heat_flux(h, V)                                        for h, V in zip(hb['h'], hb['V'])]
+    ax.semilogy(b['t'], np.maximum(b['q'], 1), 'k--', lw=1.8, label='Базовый')
+    ax.semilogy(o['t'], np.maximum(o['q'], 1), 'r-',  lw=2.0, label='Оптимум')
+    ax.set_xlabel('Время, с'); ax.set_ylabel('q, Вт/м²')
+    ax.set_title('Тепловой поток'); ax.grid(True, which='both', alpha=0.4); ax.legend()
 
     ax = axs[1, 1]
-    ax.semilogy(to, np.maximum(q_tot,  1), 'b-',  lw=2,   label='q_total (ПМП)')
-    ax.semilogy(tb, np.maximum(q_ball, 1), 'k--', lw=1.5, alpha=.6, label='q_total (баллист.)')
-    ax.semilogy(to, np.maximum(qt, 1), 'g:', lw=1.2, label='q_turb')
-    ax.semilogy(to, np.maximum(qc, 1), 'r:', lw=1.2, label='q_comp')
-    ax.semilogy(to, np.maximum(qa, 1), 'm:', lw=1.2, label='q_amb')
-    ax.set_xlabel('Время, с'); ax.set_ylabel('Вт/м²')
-    ax.set_title('Тепловой поток (составляющие)')
-    ax.legend(fontsize=8); ax.grid(True, which='both', alpha=.3)
+    ax.plot(b['t'], b['Q']/1e6, 'k--', lw=1.8, label='Базовый')
+    ax.plot(o['t'], o['Q']/1e6, 'g-',  lw=2.0, label='Оптимум')
+    ax.set_xlabel('Время, с'); ax.set_ylabel('Q, МДж/м²')
+    ax.set_title('Накопленный нагрев'); ax.grid(True); ax.legend()
 
-    ax = axs[1, 2]
-    ax.plot(to, ho['Q']/1e6, 'b-', lw=2, label='ПМП-опт.')
-    ax.plot(tb, hb['Q']/1e6, 'k--', lw=1.5, alpha=.7, label='Баллист.')
-    ax.set_xlabel('Время, с'); ax.set_ylabel('Q(t), МДж/м²')
-    ax.set_title('Суммарный тепловой поток'); ax.legend(fontsize=10); ax.grid(True)
     plt.tight_layout()
-
-    fig2, ax2s = plt.subplots(1, 4, figsize=(19, 5))
-    fig2.suptitle('Сопряжённые переменные ψ(t) и гамильтониан — верификация ПМП (§11.3)',
-                  fontsize=12)
-    ax2s[0].plot(adj['t'], adj['pV'], 'b-', lw=2)
-    ax2s[0].axhline(-lambda_V, color='r', ls='--', lw=1.5,
-                    label=f'ψ_V(T)=−λ_V={-lambda_V:.2f}')
-    ax2s[0].set_xlabel('Время, с'); ax2s[0].set_ylabel(r'$\psi_V$')
-    ax2s[0].set_title(r'$\psi_V(t)$'); ax2s[0].legend(fontsize=10); ax2s[0].grid(True)
-
-    ax2s[1].plot(adj['t'], adj['pt'], 'g-', lw=2)
-    ax2s[1].axhline(0, color='r', ls='--', lw=1.5, label=r'$\psi_\theta(T)=0$')
-    ax2s[1].set_xlabel('Время, с'); ax2s[1].set_ylabel(r'$\psi_\theta$')
-    ax2s[1].set_title(r'$\psi_\theta(t)$'); ax2s[1].legend(fontsize=10); ax2s[1].grid(True)
-
-    ax2s[2].plot(adj['t'], adj['pR']*1e6, 'r-', lw=2)
-    ax2s[2].axhline(0, color='b', ls='--', lw=1.5, label=r'$\psi_R(T)=0$')
-    ax2s[2].set_xlabel('Время, с'); ax2s[2].set_ylabel(r'$\psi_R\times10^6$')
-    ax2s[2].set_title(r'$\psi_R(t)$'); ax2s[2].legend(fontsize=10); ax2s[2].grid(True)
-
-    Vi_ = interp1d(to, ho['V'],            fill_value='extrapolate')
-    ti_ = interp1d(to, ho['theta_deg']*DEG, fill_value='extrapolate')
-    Ri_ = interp1d(to, ho['h']+Rb,          fill_value='extrapolate')
-    Ki_ = interp1d(to, ho['K'],  kind='previous', fill_value='extrapolate')
-    Harr = np.array([hamiltonian(float(Vi_(t)), float(ti_(t)), float(Ri_(t)),
-                                  adj['pV'][i], adj['pt'][i], adj['pR'][i], float(Ki_(t)))
-                     for i, t in enumerate(adj['t'])])
-    ax2s[3].plot(adj['t'], Harr, 'k-', lw=2, label='H(t)')
-    ax2s[3].axhline(0, color='r', ls='--', lw=1.5, label='H=0 (условие)')
-    ax2s[3].set_xlabel('Время, с'); ax2s[3].set_ylabel('H')
-    ax2s[3].set_title('Гамильтониан H(t)'); ax2s[3].legend(fontsize=10); ax2s[3].grid(True)
-    plt.tight_layout()
+    plt.savefig('output/penetrator_optimization.png', dpi=150, bbox_inches='tight')
     plt.show()
 
-def _traj_opt(args):
-    Ksc, tsw = args
-    return integrate_traj(Ksc, tsw, save=True)
 
-def _traj_ball(_):
-    return integrate_traj([0.], [], save=True)
-
+# ─── main ─────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     _mp.freeze_support()
-    t0 = time.time()
-    Ksc, tsw, _ = solve_pmp()
+    t_start = time.time()
+
+    res = optimize_initial_conditions()
+    V0_opt, theta0_opt = res.x          # h0 ФИКСИРОВАНА — не распаковываем из res.x
 
     print('\nПараллельное интегрирование траекторий ...')
     ctx = _mp_ctx()
     with ProcessPoolExecutor(max_workers=2, mp_context=ctx) as exe:
-        fut_opt  = exe.submit(_traj_opt, (Ksc, tsw))
-        fut_ball = exe.submit(_traj_ball, None)
-        V_, th_, R_, Q_, T_, ho = fut_opt.result()
-        *_, hb = fut_ball.result()
+        fut_base = exe.submit(_run_base, None)
+        fut_opti = exe.submit(_run_opti, res.x)
+        _, _, _, _, _, hist_b = fut_base.result()
+        _, _, _, _, _, hist_o = fut_opti.result()
 
-    print('Обратное интегрирование сопряжённых ...')
-    adj = integrate_adjoint_bwd(ho)
+    base_case = _make_case('Базовый', h0_ref, V0_ref,  theta0_ref,   hist_b)
+    opti_case = _make_case('Оптимум', h0_ref, V0_opt,  theta0_opt,   hist_o)
 
-    print(f'Общее время: {time.time()-t0:.1f} с')
-    plot_results(ho, adj, hb, Ksc, tsw)
+    print_results(base_case, opti_case)
+    print(f'\nОбщее время: {time.time()-t_start:.1f} с')
+
+    plot_results(base_case, opti_case)
