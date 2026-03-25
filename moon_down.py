@@ -32,6 +32,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import differential_evolution, minimize
+import multiprocessing as mp
 
 # ─────────────────────────────────────────────────────────────────────
 # ИСХОДНЫЕ ДАННЫЕ
@@ -57,7 +58,7 @@ ASCENT_TOL = 2.0      # м
 UPWARD_V_TOL = 0.2    # м/с
 
 # Веса штрафов
-W_TOUCH_V = 2.0e6
+W_TOUCH_V = 8.0e10
 W_NOT_LANDED_H = 5.0e7
 W_NOT_LANDED_V = 1.0e6
 W_ASCENT = 2.0e7
@@ -65,6 +66,7 @@ W_UPWARD_V = 2.0e6
 W_ALIGN = 5.0e4
 W_FUEL = 1.0
 W_UNDERGROUND = 1.0e8
+
 
 print("=" * 72)
 print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — bang-bang версия")
@@ -78,7 +80,7 @@ print(f" c       = {c:.1f} м/с")
 print(f" P_max   = {P_max:.1f} Н")
 print(f" u_m     = {u_m:.6f} кг/с")
 print("=" * 72)
-
+H_SLOW = 30.0
 
 # ─────────────────────────────────────────────────────────────────────
 # ГРАВИТАЦИЯ
@@ -160,6 +162,10 @@ def simulate_bb(params, save_history=False):
     max_h = h0
     max_upward_v = max(0.0, v0)
 
+    # ← ДОБАВИТЬ ЭТО: инициализируем накопитель штрафа
+    H_SLOW = 50.0
+    low_alt_v_penalty = 0.0
+
     t_land = None
     h_land = None
     v_land = None
@@ -174,7 +180,7 @@ def simulate_bb(params, save_history=False):
         hist_g = [g_func(h)]
 
     while t < SIM_MAX:
-        dt = 0.05 if h < 300.0 else 0.2
+        dt = 0.005 if h < 10.0 else (0.02 if h < 100.0 else (0.05 if h < 300.0 else 0.2))
         dt = min(dt, SIM_MAX - t)
 
         u = control_bb(params, t, m)
@@ -185,6 +191,10 @@ def simulate_bb(params, save_history=False):
 
         max_h = max(max_h, h)
         max_upward_v = max(max_upward_v, v)
+
+        # ← ДОБАВИТЬ ЭТО: накапливаем штраф за высокую скорость у земли
+        if h < H_SLOW and v < 0.0:
+            low_alt_v_penalty += v**2 * (H_SLOW - h) / H_SLOW * dt
 
         # Детектор касания поверхности
         if h_prev > 0.0 and h <= 0.0:
@@ -240,6 +250,7 @@ def simulate_bb(params, save_history=False):
         "ascent_amount": ascent_amount,
         "max_upward_v": max_upward_v,
         "t_minus_T": t_land - T if landed else SIM_MAX - T,
+        "low_alt_v_penalty": low_alt_v_penalty,
     }
 
     if save_history:
@@ -283,6 +294,7 @@ def objective_bb(params):
 
     # Желательно, чтобы T совпадал с реальным касанием
     J += W_ALIGN * sim["t_minus_T"]**2
+    J += 5e5 * sim["low_alt_v_penalty"]
 
     if sim["underground"]:
         J += W_UNDERGROUND
@@ -307,24 +319,27 @@ def objective_bb(params):
 def solve_bb():
     print("\nШаг 1: Глобальный поиск по [t_on, T] (Differential Evolution)...")
     bounds = [
-        (0.0, 260.0),   # t_on
+        (60.0, 160.0),   # t_on
         (60.0, 320.0),  # T
     ]
 
     t0 = time.time()
+    ctx = mp.get_context("fork")  # для macOS/Linux
+    pool = ctx.Pool(processes=mp.cpu_count())
     res_de = differential_evolution(
         objective_bb,
         bounds=bounds,
         strategy="best1bin",
         maxiter=120,
-        popsize=18,
+        popsize=30,
         tol=1e-6,
         mutation=(0.5, 1.0),
         recombination=0.85,
         seed=42,
         polish=False,
         disp=False,
-        workers=1,
+        workers=pool.map,  # ← вот это включает параллелизм
+        updating="deferred",
     )
     print(f" DE завершён за {time.time() - t0:.1f} с")
     print(f" J_de = {res_de.fun:.6e}")
