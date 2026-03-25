@@ -21,6 +21,7 @@ MASS    = 120.0
 D_BODY  = 0.6
 S_M     = m.pi * (D_BODY / 2.0) ** 2
 G_VENUS = 8.87
+G0      = 9.81   # ← стандартное g для нормировки перегрузки, м/с²
 
 # ─────────────────────────────────────────────────────────────────
 #  СВОЙСТВА БАЗОВЫХ ГРУНТОВ
@@ -151,13 +152,14 @@ def poncelet_coeffs(Qk_deg, sigma_c, rho_s):
 def worker_pure(V0, Qk_deg, sigma_c, rho_s):
     """
     Однородный грунт.
-    Возвращает (V0, Qk_deg, x_max, V_hist, x_hist).
+    Возвращает (V0, Qk_deg, x_max, V_hist, x_hist, max_g).
     """
     A, B    = poncelet_coeffs(Qk_deg, sigma_c, rho_s)
     state   = {'V': float(V0), 'x': 0.0, 'A': A, 'B': B}
     V_hist  = [float(V0)]
     x_hist  = [0.0]
     step    = 0
+    max_g   = S_M * (A + B * float(V0) ** 2) / (MASS * G0)  # ← начальная перегрузка
 
     while True:
         vals  = runge_kutta_4(EQUATIONS_GRUNT, state, DT, DX_KEYS_GRUNT)
@@ -165,6 +167,9 @@ def worker_pure(V0, Qk_deg, sigma_c, rho_s):
         x_new = vals[1]
         if V_new <= 0.0 or x_new >= X_MAX_SIM:
             break
+        g_step = S_M * (A + B * V_new ** 2) / (MASS * G0)   # ← перегрузка на шаге
+        if g_step > max_g:                                    # ← фиксация максимума
+            max_g = g_step                                    # ←
         state['V'] = V_new
         state['x'] = x_new
         step += 1
@@ -172,14 +177,14 @@ def worker_pure(V0, Qk_deg, sigma_c, rho_s):
             V_hist.append(V_new)
             x_hist.append(x_new)
 
-    return V0, Qk_deg, state['x'], V_hist, x_hist
+    return V0, Qk_deg, state['x'], V_hist, x_hist, max_g     # ← добавлен max_g
 
 
 def worker_mixed(V0, Qk_deg, layers_precomp):
     """
     Слоистый грунт.
     layers_precomp: tuple of (A, B, thickness)
-    Возвращает (V0, Qk_deg, x_max, V_hist, x_hist).
+    Возвращает (V0, Qk_deg, x_max, V_hist, x_hist, max_g).
     """
     total  = sum(t for _, _, t in layers_precomp)
     x_cur  = 0.0
@@ -187,6 +192,7 @@ def worker_mixed(V0, Qk_deg, layers_precomp):
     V_hist = [V_cur]
     x_hist = [x_cur]
     step   = 0
+    max_g  = 0.0                                                   # ←
 
     while True:
         # определяем слой по текущей глубине
@@ -205,6 +211,9 @@ def worker_mixed(V0, Qk_deg, layers_precomp):
         x_new = vals[1]
         if V_new <= 0.0 or x_new >= X_MAX_SIM:
             break
+        g_step = S_M * (A_cur + B_cur * V_new ** 2) / (MASS * G0)  # ← перегрузка
+        if g_step > max_g:                                           # ← фиксация
+            max_g = g_step                                           # ←
         V_cur = V_new
         x_cur = x_new
         step += 1
@@ -212,26 +221,28 @@ def worker_mixed(V0, Qk_deg, layers_precomp):
             V_hist.append(V_cur)
             x_hist.append(x_cur)
 
-    return V0, Qk_deg, x_cur, V_hist, x_hist
+    return V0, Qk_deg, x_cur, V_hist, x_hist, max_g                # ← добавлен max_g
 
 
 # ─────────────────────────────────────────────────────────────────
 #  ЗАПУСК РАСЧЁТА + СБОРКА СЕТКИ
 # ─────────────────────────────────────────────────────────────────
 def build_grid(raw_results):
-    """raw_results: list of (V0, Qk_deg, x_max, V_hist, x_hist)"""
+    """raw_results: list of (V0, Qk_deg, x_max, V_hist, x_hist, max_g)"""
     n_V0 = len(V0_VALUES)
     n_Qk = len(QK_VALUES)
     results_grid = np.zeros((n_V0, n_Qk))
+    max_g_grid   = np.zeros((n_V0, n_Qk))   # ←
     trajectories = {}
 
-    for V0_r, Qk_r, x_max, V_hist, x_hist in raw_results:
+    for V0_r, Qk_r, x_max, V_hist, x_hist, max_g in raw_results:   # ← распаковка
         i = V0_VALUES.index(int(round(V0_r)))
         j = min(range(n_Qk), key=lambda k: abs(QK_VALUES[k] - Qk_r))
         results_grid[i, j] = x_max
+        max_g_grid[i, j]   = max_g                                  # ←
         trajectories[(int(V0_r), round(Qk_r, 1))] = (V_hist, x_hist)
 
-    return results_grid, trajectories
+    return results_grid, max_g_grid, trajectories                   # ←
 
 
 def run_grid_pure(sigma_c, rho_s, n_cpu):
@@ -272,7 +283,7 @@ plt.rcParams['axes.titlesize'] = 12
 plt.rcParams['axes.labelsize'] = FS
 
 
-def plot_soil(soil_name, results_grid, trajectories, layers=None):
+def plot_soil(soil_name, results_grid, max_g_grid, trajectories, layers=None):  # ← +max_g_grid
     V0a = np.array(V0_VALUES, dtype=float)
     Qka = np.array(QK_VALUES,  dtype=float)
     tag = soil_name[:28]
@@ -311,11 +322,23 @@ def plot_soil(soil_name, results_grid, trajectories, layers=None):
     ax.grid(alpha=0.3)
     plt.tight_layout()
 
-    # ── 3. Глубина(V0) при фиксированных углах ───────────────────
+    # ── 3. Тепловая карта максимальной перегрузки ─────────────── # ←
+    fig, ax = plt.subplots(figsize=(11, 6))                        # ←
+    fig.canvas.manager.set_window_title(f'[{tag}] 3 — Макс. перегрузка')  # ←
+    pcm3 = ax.pcolormesh(Qka, V0a, max_g_grid,                    # ←
+                         cmap='hot_r', shading='auto')             # ←
+    fig.colorbar(pcm3, ax=ax, label='Максимальная перегрузка, g') # ←
+    ax.set_xlabel('Угол раствора конуса, °')                      # ←
+    ax.set_ylabel('Скорость внедрения, м/с')                      # ←
+    ax.set_title(f'Макс. перегрузка (пик: {max_g_grid.max():.0f} g)\n{soil_name}')  # ←
+    ax.grid(alpha=0.2, color='white')                              # ←
+    plt.tight_layout()                                             # ←
+
+    # ── 4. Глубина(V0) при фиксированных углах ───────────────────
     sel_qk  = [10, 20, 30, 45, 60, 75, 90]
     colors7 = plt.cm.tab10(np.linspace(0, 0.6, len(sel_qk)))
     fig, ax = plt.subplots(figsize=(11, 6))
-    fig.canvas.manager.set_window_title(f'[{tag}] 3 — Глубина vs V0')
+    fig.canvas.manager.set_window_title(f'[{tag}] 4 — Глубина vs V0')
     for col, Qk in zip(colors7, sel_qk):
         j = min(range(len(QK_VALUES)), key=lambda k: abs(QK_VALUES[k] - Qk))
         ax.plot(V0a, results_grid[:, j],
@@ -329,11 +352,11 @@ def plot_soil(soil_name, results_grid, trajectories, layers=None):
     ax.grid(True)
     plt.tight_layout()
 
-    # ── 4. Глубина(Qk) при фиксированных скоростях ───────────────
+    # ── 5. Глубина(Qk) при фиксированных скоростях ───────────────
     sel_v0  = [50, 65, 80, 100, 120, 135]
     colors6 = plt.cm.tab10(np.linspace(0, 0.5, len(sel_v0)))
     fig, ax = plt.subplots(figsize=(11, 6))
-    fig.canvas.manager.set_window_title(f'[{tag}] 4 — Глубина vs Qk')
+    fig.canvas.manager.set_window_title(f'[{tag}] 5 — Глубина vs Qk')
     for col, V0 in zip(colors6, sel_v0):
         i = min(range(len(V0_VALUES)), key=lambda k: abs(V0_VALUES[k] - V0))
         ax.plot(Qka, results_grid[i, :],
@@ -347,11 +370,11 @@ def plot_soil(soil_name, results_grid, trajectories, layers=None):
     ax.grid(True)
     plt.tight_layout()
 
-    # ── 5. Траектории V(x) в грунте ──────────────────────────────
+    # ── 6. Траектории V(x) в грунте ──────────────────────────────
     cases   = [(135, 90.0), (135, 45.0), (100, 45.0), (75, 30.0), (50, 15.0)]
     colors5 = plt.cm.tab10(np.linspace(0, 0.45, len(cases)))
     fig, ax = plt.subplots(figsize=(11, 6))
-    fig.canvas.manager.set_window_title(f'[{tag}] 5 — V(x) в грунте')
+    fig.canvas.manager.set_window_title(f'[{tag}] 6 — V(x) в грунте')
 
     if layers is not None:
         layer_colors  = ['#ffe8c0', '#b0b0b0']
@@ -388,7 +411,7 @@ def plot_soil(soil_name, results_grid, trajectories, layers=None):
     ax.grid(True, alpha=0.4)
     plt.tight_layout()
 
-    # ── 6. V_min(Qk) ─────────────────────────────────────────────
+    # ── 7. V_min(Qk) ─────────────────────────────────────────────
     V_min_arr = []
     for j in range(len(QK_VALUES)):
         found = False
@@ -404,7 +427,7 @@ def plot_soil(soil_name, results_grid, trajectories, layers=None):
     valid_mask = ~np.isnan(V_min_np)
 
     fig, ax = plt.subplots(figsize=(11, 6))
-    fig.canvas.manager.set_window_title(f'[{tag}] 6 — V_min(Qk)')
+    fig.canvas.manager.set_window_title(f'[{tag}] 7 — V_min(Qk)')
     ax.plot(Qka, V_min_arr, '-', color='navy', linewidth=2,
             label=f'V_min для x ≥ {X_REQUIRED} м')
     ax.fill_between(Qka,
@@ -434,9 +457,9 @@ def plot_mixed_comparison(mixed_results):
     fig, axes = plt.subplots(nr, nc, figsize=(18, 6 * nr))
     fig.canvas.manager.set_window_title('Сравнение слоистых — тепловые карты')
     axes = axes.flatten()
-    vmax_global = min(max(rg.max() for rg in mixed_results.values()), X_MAX_SIM)
+    vmax_global = min(max(rg.max() for rg, _ in mixed_results.values()), X_MAX_SIM)  # ←
 
-    for ax, (sname, rg) in zip(axes, mixed_results.items()):
+    for ax, (sname, (rg, mg)) in zip(axes, mixed_results.items()):   # ←
         pcm = ax.pcolormesh(Qka, V0a, rg,
                             cmap='jet', shading='auto',
                             vmin=0, vmax=vmax_global)
@@ -461,7 +484,7 @@ def plot_mixed_comparison(mixed_results):
     fig2.canvas.manager.set_window_title('Сравнение слоистых — V_min(Qk)')
     colors_mix = plt.cm.Set2(np.linspace(0, 1, n))
 
-    for col, (sname, rg) in zip(colors_mix, mixed_results.items()):
+    for col, (sname, (rg, mg)) in zip(colors_mix, mixed_results.items()):  # ←
         V_min_arr = []
         for j in range(len(QK_VALUES)):
             found = False
@@ -510,8 +533,9 @@ if __name__ == '__main__':
         print('=' * 62)
         print(f'Грунт : {soil_name}')
         print('=' * 62)
-        rg, traj = run_grid_pure(props['sigma_c'], props['rho_s'], n_cpu)
-        plot_soil(soil_name, rg, traj, layers=None)
+        rg, mg, traj = run_grid_pure(props['sigma_c'], props['rho_s'], n_cpu)  # ←
+        print(f'  Макс. перегрузка по сетке: {mg.max():.1f} g')                # ←
+        plot_soil(soil_name, rg, mg, traj, layers=None)                        # ←
 
     # ── СЛОИСТЫЕ ГРУНТЫ ───────────────────────────────────────────
     mixed_results = {}
@@ -521,9 +545,10 @@ if __name__ == '__main__':
         layer_str = ' / '.join(f"{s['label']} {t} м" for s, t in layers)
         print(f'Слоистый : {layer_str}  (циклически)')
         print('=' * 62)
-        rg, traj = run_grid_mixed(layers, n_cpu)
-        mixed_results[soil_name] = rg
-        plot_soil(soil_name, rg, traj, layers=layers)
+        rg, mg, traj = run_grid_mixed(layers, n_cpu)                           # ←
+        print(f'  Макс. перегрузка по сетке: {mg.max():.1f} g')               # ←
+        mixed_results[soil_name] = (rg, mg)                                    # ←
+        plot_soil(soil_name, rg, mg, traj, layers=layers)                      # ←
 
     plot_mixed_comparison(mixed_results)
 
