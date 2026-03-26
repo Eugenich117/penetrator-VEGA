@@ -47,22 +47,24 @@ fuel0  = m0 - m_dry
 c      = 3_050.0
 P_max  = 20_000.0
 u_m    = P_max / c  # кг/с
+V_LAND_MAX = -1.0
 
 # Временные ограничения
 T_MIN = 50.0
 T_MAX = 350.0
 SIM_MAX = 500.0
 
+
 # Ограничения против "взлёта"
 ASCENT_TOL = 2.0      # м
 UPWARD_V_TOL = 0.2    # м/с
 
 # Веса штрафов
-W_TOUCH_V = 8.0e10
-W_NOT_LANDED_H = 5.0e7
-W_NOT_LANDED_V = 1.0e6
-W_ASCENT = 2.0e7
-W_UPWARD_V = 2.0e6
+W_TOUCH_V = 1.0e5
+W_NOT_LANDED_H = 1.0e4
+W_NOT_LANDED_V = 1.0e4
+W_ASCENT = 1.0e5
+W_UPWARD_V = 5.0e4
 W_ALIGN = 5.0e4
 W_FUEL = 1.0
 W_UNDERGROUND = 1.0e8
@@ -345,7 +347,7 @@ def solve_bb():
     print(f" J_de = {res_de.fun:.6e}")
     print(f" x_de = [t_on={res_de.x[0]:.6f}, T={res_de.x[1]:.6f}]")
 
-    print("\nШаг 2: Локальная полировка (L-BFGS-B)...")
+    print("\nШаг 2: Локальный поиск (L-BFGS-B)...")
     t1 = time.time()
     res_local = minimize(
         objective_bb,
@@ -356,6 +358,7 @@ def solve_bb():
             "maxiter": 1000,
             "ftol": 1e-14,
             "maxls": 50,
+            "eps": 0.01,
         }
     )
     print(f" Local завершён за {time.time() - t1:.1f} с")
@@ -467,16 +470,6 @@ def plot_results(params_opt):
     ax.set_xlabel("Время, с")
     ax.set_ylabel("u, кг/с")
     ax.set_title("Bang-bang управление")
-    ax.grid(True)
-    ax.legend(fontsize=8)
-
-    # Гравитация
-    ax = axes[1, 1]
-    ax.plot(t, g, color="purple", lw=2)
-    ax.axhline(g0, color="gray", ls="--", lw=1.0, label=f"g0={g0}")
-    ax.set_xlabel("Время, с")
-    ax.set_ylabel("g(h), м/с²")
-    ax.set_title("Гравитация")
     ax.grid(True)
     ax.legend(fontsize=8)
 
