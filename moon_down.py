@@ -1,30 +1,21 @@
 # -*- coding: utf-8 -*-
 """
 ========================================================================
-ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — bang-bang версия
+ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — двухимпульсное bang-bang управление
 ========================================================================
 
-Что изменено:
-1. Управление только типа bang-bang:
-      u(t) = 0,   t < t_on
-      u(t) = u_m, t_on <= t <= T
-      u(t) = 0,   t > T
-   На оптимуме обычно получается T ≈ t_land, то есть по сути одно включение.
+Управление:
+   u(t) = u_m, если t_on1 <= t <= T1
+   u(t) = u_m, если t_on2 <= t <= T2
+   u(t) = 0   во всех остальных случаях
 
-2. Оптимизируются только 2 параметра:
-      t_on  — момент включения двигателя
-      T     — конец активного участка / целевой момент посадки
+Оптимизируются 4 параметра:
+   t_on1 — начало первого импульса
+   T1    — конец первого импульса
+   t_on2 — начало второго импульса
+   T2    — конец второго импульса (≈ момент касания)
 
-3. Целевая функция:
-   - сильно штрафует ненулевую скорость в касании
-   - штрафует недолёт / перелёт
-   - запрещает "взлёт вверх"
-   - слабо минимизирует расход топлива
-
-4. Интегрирование с детектором касания h = 0.
-
-Это уже не косвенный метод Понтрягина, а устойчивый прямой поиск
-по малому числу параметров управления.
+Порядковое ограничение: t_on1 <= T1 <= t_on2 <= T2
 ========================================================================
 """
 
@@ -37,41 +28,39 @@ import multiprocessing as mp
 # ─────────────────────────────────────────────────────────────────────
 # ИСХОДНЫЕ ДАННЫЕ
 # ─────────────────────────────────────────────────────────────────────
-R_moon = 1_737_000.0
-g0     = 1.62
-h0     = 15_000.0
-v0     = -20.0
-m0     = 5_560.0
-m_dry  = 3_740.0
-fuel0  = m0 - m_dry
-c      = 3_050.0
-P_max  = 20_000.0
-u_m    = P_max / c  # кг/с
-V_LAND_MAX = -1.0
+R_moon    = 1_737_000.0
+g0        = 1.62
+h0        = 15_000.0
+v0        = -20.0
+m0        = 5_560.0
+m_dry     = 3_740.0
+fuel0     = m0 - m_dry
+c         = 3_050.0
+P_max     = 20_000.0
+u_m       = P_max / c          # кг/с
+H_SLOW    = 50.0               # м — высота "медленной" зоны
 
 # Временные ограничения
-T_MIN = 50.0
-T_MAX = 350.0
-SIM_MAX = 500.0
+T_MIN  = 50.0
+T_MAX  = 380.0
+SIM_MAX = 600.0
 
-
-# Ограничения против "взлёта"
-ASCENT_TOL = 2.0      # м
+# Ограничения против взлёта
+ASCENT_TOL   = 2.0    # м
 UPWARD_V_TOL = 0.2    # м/с
 
 # Веса штрафов
-W_TOUCH_V = 1.0e5
-W_NOT_LANDED_H = 1.0e4
-W_NOT_LANDED_V = 1.0e4
-W_ASCENT = 1.0e5
-W_UPWARD_V = 5.0e4
-W_ALIGN = 5.0e4
-W_FUEL = 1.0
-W_UNDERGROUND = 1.0e8
-
+W_TOUCH_V      = 1.0e6
+W_NOT_LANDED   = 1.0e9
+W_ASCENT       = 1.0e5
+W_UPWARD_V     = 5.0e4
+W_ALIGN        = 1.0e3
+W_FUEL         = 1.0
+W_UNDERGROUND  = 1.0e8
+W_LOW_V        = 2.0e5
 
 print("=" * 72)
-print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — bang-bang версия")
+print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — двухимпульсный bang-bang")
 print("=" * 72)
 print(f" h0      = {h0:.1f} м")
 print(f" v0      = {v0:.1f} м/с")
@@ -82,7 +71,7 @@ print(f" c       = {c:.1f} м/с")
 print(f" P_max   = {P_max:.1f} Н")
 print(f" u_m     = {u_m:.6f} кг/с")
 print("=" * 72)
-H_SLOW = 30.0
+
 
 # ─────────────────────────────────────────────────────────────────────
 # ГРАВИТАЦИЯ
@@ -98,7 +87,6 @@ def g_func(h):
 def rhs(h, v, m, u):
     m_eff = max(m, m_dry)
     u_eff = 0.0 if m <= m_dry else np.clip(u, 0.0, u_m)
-
     dh = v
     dv = c * u_eff / m_eff - g_func(h)
     dm = -u_eff
@@ -107,42 +95,28 @@ def rhs(h, v, m, u):
 
 def rk4_step(h, v, m, u, dt):
     k1 = rhs(h, v, m, u)
-
-    h2 = h + 0.5 * dt * k1[0]
-    v2 = v + 0.5 * dt * k1[1]
-    m2 = m + 0.5 * dt * k1[2]
+    h2, v2, m2 = h + 0.5*dt*k1[0], v + 0.5*dt*k1[1], m + 0.5*dt*k1[2]
     k2 = rhs(h2, v2, m2, u)
-
-    h3 = h + 0.5 * dt * k2[0]
-    v3 = v + 0.5 * dt * k2[1]
-    m3 = m + 0.5 * dt * k2[2]
+    h3, v3, m3 = h + 0.5*dt*k2[0], v + 0.5*dt*k2[1], m + 0.5*dt*k2[2]
     k3 = rhs(h3, v3, m3, u)
-
-    h4 = h + dt * k3[0]
-    v4 = v + dt * k3[1]
-    m4 = m + dt * k3[2]
+    h4, v4, m4 = h + dt*k3[0], v + dt*k3[1], m + dt*k3[2]
     k4 = rhs(h4, v4, m4, u)
-
-    h_new = h + dt / 6.0 * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
-    v_new = v + dt / 6.0 * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
-    m_new = m + dt / 6.0 * (k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
-
-    if m_new < m_dry:
-        m_new = m_dry
-
-    return h_new, v_new, m_new
+    h_new = h + dt/6.0*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
+    v_new = v + dt/6.0*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
+    m_new = m + dt/6.0*(k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
+    return h_new, v_new, max(m_new, m_dry)
 
 
 # ─────────────────────────────────────────────────────────────────────
-# BANG-BANG УПРАВЛЕНИЕ
+# ДВУХИМПУЛЬСНОЕ УПРАВЛЕНИЕ
 # ─────────────────────────────────────────────────────────────────────
 def control_bb(params, t, m):
-    t_on, T = params
+    t_on1, T1, t_on2, T2 = params
     if m <= m_dry:
         return 0.0
-    if t < t_on:
-        return 0.0
-    if t <= T:
+    if t_on1 <= t <= T1:
+        return u_m
+    if t_on2 <= t <= T2:
         return u_m
     return 0.0
 
@@ -151,42 +125,34 @@ def control_bb(params, t, m):
 # МОДЕЛИРОВАНИЕ
 # ─────────────────────────────────────────────────────────────────────
 def simulate_bb(params, save_history=False):
-    t_on, T = float(params[0]), float(params[1])
+    t_on1, T1, t_on2, T2 = map(float, params)
 
-    h = h0
-    v = v0
-    m = m0
-    t = 0.0
-
-    landed = False
+    h, v, m, t = h0, v0, m0, 0.0
+    landed     = False
     underground = False
-
-    max_h = h0
+    max_h      = h0
     max_upward_v = max(0.0, v0)
-
-    # ← ДОБАВИТЬ ЭТО: инициализируем накопитель штрафа
-    H_SLOW = 50.0
     low_alt_v_penalty = 0.0
 
-    t_land = None
-    h_land = None
-    v_land = None
-    m_land = None
+    t_land = h_land = v_land = m_land = None
 
     if save_history:
-        hist_t = [t]
-        hist_h = [h]
-        hist_v = [v]
-        hist_m = [m]
-        hist_u = [control_bb(params, t, m)]
+        hist_t = [t]; hist_h = [h]; hist_v = [v]
+        hist_m = [m]; hist_u = [control_bb(params, t, m)]
         hist_g = [g_func(h)]
 
     while t < SIM_MAX:
-        dt = 0.005 if h < 10.0 else (0.02 if h < 100.0 else (0.05 if h < 300.0 else 0.2))
+        if h < 10.0:
+            dt = 0.005
+        elif h < 100.0:
+            dt = 0.02
+        elif h < 500.0:
+            dt = 0.05
+        else:
+            dt = 0.2
         dt = min(dt, SIM_MAX - t)
 
         u = control_bb(params, t, m)
-
         h_prev, v_prev, m_prev, t_prev = h, v, m, t
         h, v, m = rk4_step(h, v, m, u, dt)
         t += dt
@@ -194,26 +160,20 @@ def simulate_bb(params, save_history=False):
         max_h = max(max_h, h)
         max_upward_v = max(max_upward_v, v)
 
-        # ← ДОБАВИТЬ ЭТО: накапливаем штраф за высокую скорость у земли
         if h < H_SLOW and v < 0.0:
             low_alt_v_penalty += v**2 * (H_SLOW - h) / H_SLOW * dt
 
-        # Детектор касания поверхности
+        # Детектор касания
         if h_prev > 0.0 and h <= 0.0:
-            alpha = h_prev / (h_prev - h)
-            alpha = np.clip(alpha, 0.0, 1.0)
-
-            t_land = t_prev + alpha * dt
-            h_land = 0.0
-            v_land = v_prev + alpha * (v - v_prev)
-            m_land = m_prev + alpha * (m - m_prev)
-            landed = True
-
+            alpha   = np.clip(h_prev / (h_prev - h), 0.0, 1.0)
+            t_land  = t_prev + alpha * dt
+            h_land  = 0.0
+            v_land  = v_prev + alpha * (v - v_prev)
+            m_land  = m_prev + alpha * (m - m_prev)
+            landed  = True
             if save_history:
-                hist_t.append(t_land)
-                hist_h.append(h_land)
-                hist_v.append(v_land)
-                hist_m.append(max(m_land, m_dry))
+                hist_t.append(t_land); hist_h.append(h_land)
+                hist_v.append(v_land); hist_m.append(max(m_land, m_dry))
                 hist_u.append(control_bb(params, t_land, max(m_land, m_dry)))
                 hist_g.append(g_func(h_land))
             break
@@ -223,36 +183,30 @@ def simulate_bb(params, save_history=False):
             break
 
         if save_history:
-            hist_t.append(t)
-            hist_h.append(h)
-            hist_v.append(v)
-            hist_m.append(m)
-            hist_u.append(control_bb(params, t, m))
+            hist_t.append(t); hist_h.append(h); hist_v.append(v)
+            hist_m.append(m); hist_u.append(control_bb(params, t, m))
             hist_g.append(g_func(h))
 
     if not landed:
-        t_land = t
-        h_land = h
-        v_land = v
-        m_land = m
+        t_land, h_land, v_land, m_land = t, h, v, m
 
-    m_land = max(m_land, m_dry)
-    fuel_used = m0 - m_land
+    m_land     = max(m_land, m_dry)
+    fuel_used  = m0 - m_land
     ascent_amount = max(0.0, max_h - h0)
 
     result = {
-        "landed": landed,
-        "underground": underground,
-        "t_land": t_land,
-        "h_land": h_land,
-        "v_land": v_land,
-        "m_land": m_land,
-        "fuel_used": fuel_used,
-        "max_h": max_h,
-        "ascent_amount": ascent_amount,
-        "max_upward_v": max_upward_v,
-        "t_minus_T": t_land - T if landed else SIM_MAX - T,
-        "low_alt_v_penalty": low_alt_v_penalty,
+        "landed":             landed,
+        "underground":        underground,
+        "t_land":             t_land,
+        "h_land":             h_land,
+        "v_land":             v_land,
+        "m_land":             m_land,
+        "fuel_used":          fuel_used,
+        "max_h":              max_h,
+        "ascent_amount":      ascent_amount,
+        "max_upward_v":       max_upward_v,
+        "t_minus_T2":         t_land - T2 if landed else SIM_MAX - T2,
+        "low_alt_v_penalty":  low_alt_v_penalty,
     }
 
     if save_history:
@@ -270,47 +224,43 @@ def simulate_bb(params, save_history=False):
 # ЦЕЛЕВАЯ ФУНКЦИЯ
 # ─────────────────────────────────────────────────────────────────────
 def objective_bb(params):
-    t_on, T = float(params[0]), float(params[1])
+    t_on1, T1, t_on2, T2 = map(float, params)
 
-    # Базовые ограничения
-    if not np.isfinite(t_on) or not np.isfinite(T):
+    if not np.all(np.isfinite(params)):
         return 1e15
-    if t_on < 0.0 or T < T_MIN or T > T_MAX:
+
+    # Порядковое ограничение: t_on1 <= T1 <= t_on2 <= T2
+    if not (0.0 <= t_on1 <= T1 <= t_on2 <= T2):
         return 1e15
-    if t_on > T:
+    if T2 < T_MIN or T2 > T_MAX:
+        return 1e15
+    # Минимальный "зазор" между импульсами (не менее 2 с)
+    if t_on2 - T1 < 2.0:
         return 1e15
 
     sim = simulate_bb(params, save_history=False)
 
-    ascent_excess = max(0.0, sim["ascent_amount"] - ASCENT_TOL)
+    ascent_excess  = max(0.0, sim["ascent_amount"] - ASCENT_TOL)
     upward_v_excess = max(0.0, sim["max_upward_v"] - UPWARD_V_TOL)
 
     J = 0.0
-
-    # Экономим топливо с маленьким весом — главное сначала посадить
-    J += W_FUEL * sim["fuel_used"]
-
-    # Запрещаем "подпрыгивания"
-    J += W_ASCENT * ascent_excess**2
+    J += W_FUEL    * sim["fuel_used"]
+    J += W_ASCENT  * ascent_excess**2
     J += W_UPWARD_V * upward_v_excess**2
-
-    # Желательно, чтобы T совпадал с реальным касанием
-    J += W_ALIGN * sim["t_minus_T"]**2
-    J += 5e5 * sim["low_alt_v_penalty"]
+    J += W_ALIGN   * sim["t_minus_T2"]**2
+    J += W_LOW_V   * sim["low_alt_v_penalty"]
 
     if sim["underground"]:
         J += W_UNDERGROUND
 
     if sim["landed"]:
         J += W_TOUCH_V * sim["v_land"]**2
-        # лёгкий штраф, если касание получилось с слишком большим запасом до T или после T
-        J += 1e4 * (sim["h_land"]**2)
     else:
         h_pen = max(sim["h_land"], 0.0) / h0
         v_pen = sim["v_land"] / 100.0
-        J += 1e9
-        J += W_NOT_LANDED_H * h_pen**2
-        J += W_NOT_LANDED_V * v_pen**2
+        J += W_NOT_LANDED
+        J += 1.0e4 * h_pen**2
+        J += 1.0e4 * v_pen**2
 
     return float(J)
 
@@ -319,35 +269,41 @@ def objective_bb(params):
 # ОПТИМИЗАЦИЯ
 # ─────────────────────────────────────────────────────────────────────
 def solve_bb():
-    print("\nШаг 1: Глобальный поиск по [t_on, T] (Differential Evolution)...")
+    # Границы: [t_on1, T1, t_on2, T2]
     bounds = [
-        (60.0, 160.0),   # t_on
-        (60.0, 320.0),  # T
+        (  0.0, 200.0),   # t_on1
+        (  5.0, 250.0),   # T1
+        ( 10.0, 300.0),   # t_on2
+        ( 50.0, 380.0),   # T2
     ]
 
+    print("\nШаг 1: Глобальный поиск (Differential Evolution) ...")
     t0 = time.time()
-    ctx = mp.get_context("fork")  # для macOS/Linux
+    ctx  = mp.get_context("fork")
     pool = ctx.Pool(processes=mp.cpu_count())
     res_de = differential_evolution(
         objective_bb,
         bounds=bounds,
         strategy="best1bin",
-        maxiter=120,
+        maxiter=200,
         popsize=30,
-        tol=1e-6,
-        mutation=(0.5, 1.0),
+        tol=1e-7,
+        mutation=(0.5, 1.2),
         recombination=0.85,
         seed=42,
         polish=False,
         disp=False,
-        workers=pool.map,  # ← вот это включает параллелизм
+        workers=pool.map,
         updating="deferred",
     )
+    pool.close()
+    pool.join()
     print(f" DE завершён за {time.time() - t0:.1f} с")
-    print(f" J_de = {res_de.fun:.6e}")
-    print(f" x_de = [t_on={res_de.x[0]:.6f}, T={res_de.x[1]:.6f}]")
+    print(f" J_de  = {res_de.fun:.6e}")
+    print(f" x_de  = [t_on1={res_de.x[0]:.3f}, T1={res_de.x[1]:.3f},"
+          f" t_on2={res_de.x[2]:.3f}, T2={res_de.x[3]:.3f}]")
 
-    print("\nШаг 2: Локальный поиск (L-BFGS-B)...")
+    print("\nШаг 2: Локальная полировка (L-BFGS-B) ...")
     t1 = time.time()
     res_local = minimize(
         objective_bb,
@@ -355,33 +311,36 @@ def solve_bb():
         method="L-BFGS-B",
         bounds=bounds,
         options={
-            "maxiter": 1000,
-            "ftol": 1e-14,
-            "maxls": 50,
-            "eps": 0.01,
+            "maxiter": 2000,
+            "ftol":    1e-15,
+            "gtol":    1e-10,
+            "maxls":   60,
+            "eps":     0.01,
         }
     )
     print(f" Local завершён за {time.time() - t1:.1f} с")
     print(f" J_opt = {res_local.fun:.6e}")
 
     x_opt = res_local.x
-    sim = simulate_bb(x_opt, save_history=False)
+    sim   = simulate_bb(x_opt, save_history=False)
 
     print("\n" + "=" * 72)
-    print(" РЕЗУЛЬТАТ bang-bang ОПТИМИЗАЦИИ")
+    print(" РЕЗУЛЬТАТ ДВУХИМПУЛЬСНОЙ ОПТИМИЗАЦИИ")
     print("=" * 72)
-    print(f" Успешное касание         = {sim['landed']}")
-    print(f" t_on                     = {x_opt[0]:.6f} с")
-    print(f" T                        = {x_opt[1]:.6f} с")
-    print(f" t_land                   = {sim['t_land']:.6f} с")
-    print(f" T - t_land               = {x_opt[1] - sim['t_land']:.6f} с")
-    print(f" h_land                   = {sim['h_land']:.9f} м")
-    print(f" v_land                   = {sim['v_land']:.9f} м/с")
-    print(f" m_land                   = {sim['m_land']:.6f} кг")
-    print(f" fuel_used                = {sim['fuel_used']:.6f} кг")
-    print(f" max_h                    = {sim['max_h']:.6f} м")
-    print(f" ascent_amount            = {sim['ascent_amount']:.6f} м")
-    print(f" max_upward_v             = {sim['max_upward_v']:.6f} м/с")
+    print(f" Успешное касание   = {sim['landed']}")
+    print(f" t_on1              = {x_opt[0]:.6f} с")
+    print(f" T1                 = {x_opt[1]:.6f} с  | длительность 1 = {x_opt[1]-x_opt[0]:.3f} с")
+    print(f" t_on2              = {x_opt[2]:.6f} с  | пауза          = {x_opt[2]-x_opt[1]:.3f} с")
+    print(f" T2                 = {x_opt[3]:.6f} с  | длительность 2 = {x_opt[3]-x_opt[2]:.3f} с")
+    print(f" t_land             = {sim['t_land']:.6f} с")
+    print(f" T2 - t_land        = {x_opt[3] - sim['t_land']:.6f} с")
+    print(f" h_land             = {sim['h_land']:.9f} м")
+    print(f" v_land             = {sim['v_land']:.9f} м/с")
+    print(f" m_land             = {sim['m_land']:.6f} кг")
+    print(f" fuel_used          = {sim['fuel_used']:.6f} кг")
+    print(f" max_h              = {sim['max_h']:.6f} м")
+    print(f" ascent_amount      = {sim['ascent_amount']:.6f} м")
+    print(f" max_upward_v       = {sim['max_upward_v']:.6f} м/с")
     print("=" * 72)
 
     return x_opt
@@ -393,97 +352,80 @@ def solve_bb():
 def plot_results(params_opt):
     sim = simulate_bb(params_opt, save_history=True)
 
-    t = sim["hist_t"]
-    h = sim["hist_h"]
-    v = sim["hist_v"]
-    m = sim["hist_m"]
-    u = sim["hist_u"]
-    g = sim["hist_g"]
+    t  = sim["hist_t"]
+    h  = sim["hist_h"]
+    v  = sim["hist_v"]
+    m  = sim["hist_m"]
+    u  = sim["hist_u"]
 
-    t_on, T = params_opt
-    t_land = sim["t_land"]
+    t_on1, T1, t_on2, T2 = params_opt
+    t_land    = sim["t_land"]
     fuel_used = sim["fuel_used"]
 
-    print("\n" + "=" * 72)
-    print(" ДИАГНОСТИКА ТРАЕКТОРИИ")
-    print("=" * 72)
-    print(f" t_on          = {t_on:.6f} с")
-    print(f" T             = {T:.6f} с")
-    print(f" t_land        = {t_land:.6f} с")
-    print(f" h_land        = {sim['h_land']:.9f} м")
-    print(f" v_land        = {sim['v_land']:.9f} м/с")
-    print(f" fuel_used     = {fuel_used:.6f} кг")
-    print(f" max_h         = {sim['max_h']:.6f} м")
-    print(f" ascent_amount = {sim['ascent_amount']:.6f} м")
-    print("=" * 72)
+    def vlines(ax):
+        ax.axvline(t_on1, color="red",     ls="--", lw=1.2, label="Вкл 1")
+        ax.axvline(T1,    color="darkred", ls=":",  lw=1.2, label="Выкл 1")
+        ax.axvline(t_on2, color="blue",    ls="--", lw=1.2, label="Вкл 2")
+        ax.axvline(T2,    color="navy",    ls=":",  lw=1.2, label="Выкл 2 / T2")
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     fig.suptitle(
-        f"Bang-bang посадка на Луну | t_on={t_on:.2f} c | "
-        f"T={T:.2f} c | t_land={t_land:.2f} c | "
-        f"v_land={sim['v_land']:.4f} м/с | fuel={fuel_used:.1f} кг",
-        fontsize=13
+        f"2-импульсная посадка | "
+        f"[{t_on1:.1f}…{T1:.1f}] + [{t_on2:.1f}…{T2:.1f}] с | "
+        f"t_land={t_land:.2f} с | v_land={sim['v_land']:.4f} м/с | fuel={fuel_used:.1f} кг",
+        fontsize=12
     )
 
-    # Высота
+    # ── Высота ──────────────────────────────────────────────────────
     ax = axes[0, 0]
     ax.plot(t, h, "b", lw=2)
     ax.axhline(0.0, color="brown", ls="--", lw=1.5, label="Поверхность")
-    ax.axhline(h0, color="gray", ls=":", lw=1.2, label="Начальная высота")
-    ax.axvline(t_on, color="red", ls="--", lw=1.2, label="Включение")
-    ax.axvline(T, color="black", ls=":", lw=1.2, label="T")
-    ax.set_xlabel("Время, с")
-    ax.set_ylabel("Высота, м")
-    ax.set_title("Высота")
-    ax.grid(True)
-    ax.legend(fontsize=8)
+    ax.axhline(h0,  color="gray",  ls=":",  lw=1.2, label="h0")
+    vlines(ax)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("Высота, м")
+    ax.set_title("Высота"); ax.grid(True); ax.legend(fontsize=7)
 
-    # Скорость
+    # ── Скорость ────────────────────────────────────────────────────
     ax = axes[0, 1]
     ax.plot(t, v, "g", lw=2)
     ax.axhline(0.0, color="gray", ls="--", lw=1.0)
-    ax.axvline(t_on, color="red", ls="--", lw=1.2)
-    ax.axvline(T, color="black", ls=":", lw=1.2)
-    ax.set_xlabel("Время, с")
-    ax.set_ylabel("Скорость, м/с")
-    ax.set_title("Вертикальная скорость")
-    ax.grid(True)
+    vlines(ax)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("Скорость, м/с")
+    ax.set_title("Вертикальная скорость"); ax.grid(True); ax.legend(fontsize=7)
 
-    # Масса
+    # ── Масса ───────────────────────────────────────────────────────
     ax = axes[0, 2]
     ax.plot(t, m, "r", lw=2)
     ax.axhline(m_dry, color="orange", ls="--", lw=1.5, label="Сухая масса")
-    ax.axvline(t_on, color="red", ls="--", lw=1.2)
-    ax.axvline(T, color="black", ls=":", lw=1.2)
-    ax.set_xlabel("Время, с")
-    ax.set_ylabel("Масса, кг")
-    ax.set_title("Масса аппарата")
-    ax.grid(True)
-    ax.legend(fontsize=8)
+    vlines(ax)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("Масса, кг")
+    ax.set_title("Масса аппарата"); ax.grid(True); ax.legend(fontsize=7)
 
-    # Управление
+    # ── Управление ──────────────────────────────────────────────────
     ax = axes[1, 0]
     ax.step(t, u, where="post", color="k", lw=2)
-    ax.axhline(u_m, color="red", ls="--", lw=1.2, label=f"u_m={u_m:.3f}")
-    ax.axvline(t_on, color="red", ls="--", lw=1.2)
-    ax.axvline(T, color="black", ls=":", lw=1.2)
-    ax.set_xlabel("Время, с")
-    ax.set_ylabel("u, кг/с")
-    ax.set_title("Bang-bang управление")
-    ax.grid(True)
-    ax.legend(fontsize=8)
+    ax.axhline(u_m, color="red", ls="--", lw=1.2, label=f"u_m={u_m:.4f} кг/с")
+    vlines(ax)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("u, кг/с")
+    ax.set_title("Управление (два импульса)"); ax.grid(True); ax.legend(fontsize=7)
 
-    # Фазовый портрет
+    # ── Скорость и высота (zoom, финальные 500 м) ───────────────────
+    ax = axes[1, 1]
+    mask = h < 500.0
+    ax.plot(t[mask], v[mask], "g", lw=2)
+    ax.axhline(0.0, color="gray", ls="--", lw=1.0)
+    vlines(ax)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("Скорость, м/с")
+    ax.set_title("Скорость (h < 500 м)"); ax.grid(True); ax.legend(fontsize=7)
+
+    # ── Фазовый портрет ─────────────────────────────────────────────
     ax = axes[1, 2]
     sc = ax.scatter(v, h, c=t, cmap="viridis", s=12)
     plt.colorbar(sc, ax=ax, label="Время, с")
     ax.plot(v[0], h[0], "go", ms=8, label="Начало")
     ax.plot(v[-1], h[-1], "rs", ms=8, label="Касание")
-    ax.set_xlabel("Скорость, м/с")
-    ax.set_ylabel("Высота, м")
-    ax.set_title("Фазовый портрет")
-    ax.grid(True)
-    ax.legend(fontsize=8)
+    ax.set_xlabel("Скорость, м/с"); ax.set_ylabel("Высота, м")
+    ax.set_title("Фазовый портрет"); ax.grid(True); ax.legend(fontsize=7)
 
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
@@ -494,9 +436,7 @@ def plot_results(params_opt):
 # ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     t_all = time.time()
-
     params_opt = solve_bb()
-
     print(f"\nОбщее время: {time.time() - t_all:.1f} с")
     print("\nПостроение графиков...")
     plot_results(params_opt)
