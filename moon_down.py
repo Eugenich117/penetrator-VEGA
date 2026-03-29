@@ -18,7 +18,7 @@
 ========================================================================
 """
 
-import time
+import time, sys, math
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import differential_evolution, minimize
@@ -54,7 +54,7 @@ W_NOT_LANDED   = 1.0e9
 W_ASCENT       = 1.0e5
 W_UPWARD_V     = 5.0e4
 W_ALIGN        = 1.0e3
-W_FUEL         = 1.0
+W_FUEL         = 7.0e5
 W_UNDERGROUND  = 1.0e8
 W_LOW_V        = 2.0e5
 
@@ -71,6 +71,10 @@ print(f" P_max   = {P_max:.1f} Н")
 print(f" u_m     = {u_m:.6f} кг/с")
 print("=" * 72)
 
+def _mp_ctx():
+    if sys.platform in ('win32', 'darwin'):
+        return mp.get_context('spawn')
+    return mp.get_context('fork')
 
 # ─────────────────────────────────────────────────────────────────────
 # ГРАВИТАЦИЯ
@@ -273,8 +277,8 @@ def solve_bb():
 
     print("\nШаг 1: Глобальный поиск (Differential Evolution, 3 параметра) ...")
     t0   = time.time()
-    ctx  = mp.get_context("fork")
-    pool = ctx.Pool(processes=mp.cpu_count())
+    _ctx  = _mp_ctx()
+    pool = _ctx.Pool(processes=mp.cpu_count())
     res_de = differential_evolution(
         objective_bb,
         bounds=bounds,
