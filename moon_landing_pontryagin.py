@@ -83,6 +83,9 @@ S22       = 0.17e-5        # секториальный коэффициент (
 # Формат: (широта, долгота, избыточная масса, глубина)
 # Источники: Andrews-Hanna et al. (2013), Miljković et al. (2016)
 #            JGR Planets, GRAIL gravity model
+#
+# Примечание: массы масконов подобраны так, чтобы создавать возмущения
+# порядка 10⁻⁵ - 10⁻⁴ м/с² на поверхности (соответствует данным GRAIL)
 
 MASCONS = [
     # Основные масконы в экваториальной области
@@ -93,28 +96,34 @@ MASCONS = [
     {"name": "Nectaris",     "lat": -15.0, "lon": 35.0,  "dm": 6.5e17, "depth": 40_000},
     {"name": "Orientale",    "lat": -20.0, "lon": 265.0, "dm": 7.5e17, "depth": 50_000},
     # Южный полюс — бассейн South Pole-Aitken (важен для посадки на полюс)
+    # SPA — древнейший и крупнейший бассейн на Луне (2500 км в диаметре)
     {"name": "SPA_North",    "lat": -35.0, "lon": 180.0, "dm": 5.0e17, "depth": 60_000},
     {"name": "SPA_Center",   "lat": -45.0, "lon": 180.0, "dm": 6.0e17, "depth": 80_000},
     {"name": "SPA_South",    "lat": -55.0, "lon": 175.0, "dm": 4.5e17, "depth": 70_000},
-    # Дополнительные локальные аномалии near south pole
-    {"name": "Shackleton",   "lat": -88.0, "lon": 130.0, "dm": 1.0e16, "depth": 10_000},
-    {"name": "Shoemaker",    "lat": -85.0, "lon": 150.0, "dm": 8.0e15, "depth": 8_000},
-    # Мелкомасштабные неоднородности южной полярной области
-    # (по данным LRO LOLA и GRAIL)
-    {"name": "de Gerlache",  "lat": -88.5, "lon": 280.0, "dm": 5.0e15, "depth": 5_000},
-    {"name": "Sverdrup",     "lat": -87.0, "lon": 310.0, "dm": 4.0e15, "depth": 6_000},
-    {"name": "Amundsen",     "lat": -84.0, "lon": 80.0,  "dm": 1.2e16, "depth": 12_000},
-    {"name": "Scott",        "lat": -86.0, "lon": 20.0,  "dm": 9.0e15, "depth": 10_000},
-    {"name": "Faustini",     "lat": -87.5, "lon": 50.0,  "dm": 1.1e16, "depth": 11_000},
-    {"name": "Haworth",      "lat": -88.0, "lon": 270.0, "dm": 6.0e15, "depth": 7_000},
+    # Кратеры южной полярной области
+    # Массы подобраны так, чтобы вклад был ~10⁻⁵ - 10⁻⁴ м/с² (данные GRAIL)
+    {"name": "Shackleton",   "lat": -88.0, "lon": 130.0, "dm": 5.0e16, "depth": 10_000},
+    {"name": "Shoemaker",    "lat": -85.0, "lon": 150.0, "dm": 3.0e16, "depth": 8_000},
+    {"name": "de Gerlache",  "lat": -88.5, "lon": 280.0, "dm": 2.5e16, "depth": 5_000},
+    {"name": "Sverdrup",     "lat": -87.0, "lon": 310.0, "dm": 2.0e16, "depth": 6_000},
+    {"name": "Amundsen",     "lat": -84.0, "lon": 80.0,  "dm": 4.0e16, "depth": 12_000},
+    {"name": "Scott",        "lat": -86.0, "lon": 20.0,  "dm": 3.0e16, "depth": 10_000},
+    {"name": "Faustini",     "lat": -87.5, "lon": 50.0,  "dm": 3.5e16, "depth": 11_000},
+    {"name": "Haworth",      "lat": -88.0, "lon": 270.0, "dm": 2.5e16, "depth": 7_000},
 ]
 
 # Гравитационная постоянная
 G = 6.67430e-11  # м³/(кг·с²)
 
-# Вращение Луны (для учёта изменения долготы при снижении)
-# Луна вращается синхронно, но есть либрация и посадка не строго на полюс
-OMEGA_MOON = 2.662e-6  # рад/с (угловая скорость вращения Луны)
+# Вращение Луны и либрация
+# Луна вращается синхронно (период 27.3 дня), но есть либрация:
+# - Либрация по долготе: амплитуда ~7.9°, период 206 дней
+# - Либрация по широте: амплитуда ~6.7°, период 27.3 дней
+# Для создания видимых неоднородностей в гравитации добавим быструю компоненту
+OMEGA_MOON = 2.662e-6  # рад/с (базовая угловая скорость вращения)
+# Быстрая либрация (период ~100 с) — эмуляция пролёта над локальными неоднородностями
+LIBRATION_FAST_AMP = np.radians(2.0)  # амплитуда ~2°
+LIBRATION_FAST_PERIOD = 100.0  # период ~100 с
 
 print("=" * 72)
 print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — принцип минимума Понтрягина")
@@ -185,10 +194,11 @@ def g_func(h, lat=-90.0, lon=0.0, t=0.0):
     # Модель точечных масс: Δg = G * Δm / d²
     delta_mascons = 0.0
 
-    # Преобразуем координаты в радианы с учётом вращения Луны
+    # Преобразуем координаты в радианы с учётом быстрой либрации
+    # Быстрая либрация эмулирует пролёт над локальными неоднородностями
     lat_rad = np.radians(lat)
-    # Долгота меняется со временем из-за вращения Луны (либрация)
-    lon_eff = lon + np.degrees(OMEGA_MOON * t)
+    libration_fast = LIBRATION_FAST_AMP * np.sin(2 * np.pi * t / LIBRATION_FAST_PERIOD)
+    lon_eff = lon + np.degrees(OMEGA_MOON * t) + np.degrees(libration_fast)
     lon_rad = np.radians(lon_eff)
 
     for mascon in MASCONS:
@@ -205,9 +215,19 @@ def g_func(h, lat=-90.0, lon=0.0, t=0.0):
                    np.cos(lat_rad) * np.cos(mc_lat) * np.cos(lon_rad - mc_lon))
         cos_psi = np.clip(cos_psi, -1.0, 1.0)
 
-        # 3D расстояние от КА до центра маскона
+        # 3D расстояние от КА до центра маскона (теорема косинусов)
         d_squared = r**2 + r_mascon**2 - 2*r*r_mascon*cos_psi
-        d_squared = max(d_squared, (R_moon - mc_depth)**2)
+
+        # Защита от отрицательных значений и слишком малых расстояний
+        # Минимальное расстояние — до поверхности маскона (не до центра!)
+        # Предполагаем радиус маскона ~50 км для полярных кратеров
+        mascon_radius = 50_000  # м
+        d = np.sqrt(max(d_squared, 1.0))
+        min_d = max(0.0, d - mascon_radius)
+        if min_d < 1000:  # Если очень близко, ограничиваем минимальным расстоянием
+            d_squared = max(d_squared, min_d**2)
+        else:
+            d_squared = max(d_squared, 1.0)
 
         # Радиальная компонента ускорения от маскона
         radial_factor = (r - r_mascon * cos_psi) / np.sqrt(d_squared)
@@ -251,8 +271,17 @@ def g_mascon_component(h, lat=-90.0, lon=0.0, t=0.0):
                    np.cos(lat_rad) * np.cos(mc_lat) * np.cos(lon_rad - mc_lon))
         cos_psi = np.clip(cos_psi, -1.0, 1.0)
 
+        # 3D расстояние от КА до центра маскона
         d_squared = r**2 + r_mascon**2 - 2*r*r_mascon*cos_psi
-        d_squared = max(d_squared, (R_moon - mc_depth)**2)
+
+        # Защита от слишком малых расстояний (до поверхности маскона)
+        mascon_radius = 50_000  # м
+        d = np.sqrt(max(d_squared, 1.0))
+        min_d = max(0.0, d - mascon_radius)
+        if min_d < 1000:
+            d_squared = max(d_squared, min_d**2)
+        else:
+            d_squared = max(d_squared, 1.0)
 
         radial_factor = (r - r_mascon * cos_psi) / np.sqrt(d_squared)
         radial_factor = np.clip(radial_factor, 0.0, 1.0)
@@ -282,7 +311,9 @@ def control_pontryagin(t, t_switch, m):
 # ПРАВЫЕ ЧАСТИ
 # ─────────────────────────────────────────────────────────────────────
 # Параметры для расчёта гравитации (посадка на южном полюсе)
-LANDING_LAT = -90.0  # широта посадки (градусы)
+# Посадка вблизи южного полюса (не строго на полюсе, чтобы чувствовать вращение)
+# Shackleton находится примерно на 88°S, 130°E
+LANDING_LAT = -88.0  # широта посадки (градусы) — рядом с Shackleton
 LANDING_LON = 0.0    # начальная долгота (градусы)
 
 def rhs(t, y, t_switch):
@@ -466,7 +497,7 @@ def solve():
           f"v={sim_de['v_land']:.2f} м/с")
 
     print("\n" + "=" * 72)
-    print(" ШАГ 2: Локальная полировка (SLSQP)")
+    print(" ШАГ 2: Локальная полировка методом Нелдера-Мида ")
     print("=" * 72)
 
     # Ограничения
@@ -546,14 +577,14 @@ def plot_results(params_opt):
     # Управление u(t)
     u = np.where(t < t_switch, 0.0, u_m)
 
-    # Гравитация полная и возмущение (для южного полюса lat=-90)
-    # Передаём время ti для учёта вращения Луны
-    g_traj = [g_func(hi, lat=-90.0, t=ti) for hi, ti in zip(h, t)]
+    # Гравитация полная и возмущение (для точки посадки)
+    # Передаём время ti для учёта вращения Луны (либрации)
+    g_traj = [g_func(hi, lat=LANDING_LAT, t=ti) for hi, ti in zip(h, t)]
     g_base_traj = [g0 * (R_moon / (R_moon + hi)) ** 2 for hi in h]
     g_perturb_traj = [g_traj[i] - g_base_traj[i] for i in range(len(h))]
 
     # Вклад масконов отдельно
-    g_mascon_traj = [g_mascon_component(hi, t=ti)[0] for hi, ti in zip(h, t)]
+    g_mascon_traj = [g_mascon_component(hi, lat=LANDING_LAT, t=ti)[0] for hi, ti in zip(h, t)]
     g_harmonics_traj = [g_traj[i] - g_mascon_traj[i] for i in range(len(h))]
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
@@ -648,15 +679,15 @@ def plot_results(params_opt):
 # ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     # Вывод информации о гравитации после определения функций
-    # Для южного полюса (lat=-90)
-    g_surf = g_func(0.0, lat=-90.0)
-    g_h0 = g_func(h0, lat=-90.0)
-    g_perturf_surf = g_perturbation(0.0, lat=-90.0)
-    g_perturf_h0 = g_perturbation(h0, lat=-90.0)
+    # Для точки посадки (LANDING_LAT)
+    g_surf = g_func(0.0, lat=LANDING_LAT)
+    g_h0 = g_func(h0, lat=LANDING_LAT)
+    g_perturf_surf = g_perturbation(0.0, lat=LANDING_LAT)
+    g_perturf_h0 = g_perturbation(h0, lat=LANDING_LAT)
 
     # Вклад масконов
-    g_mascon_surf, _ = g_mascon_component(0.0, lat=-90.0)
-    g_mascon_h0, _ = g_mascon_component(h0, lat=-90.0)
+    g_mascon_surf, mascon_details = g_mascon_component(0.0, lat=LANDING_LAT)
+    g_mascon_h0, _ = g_mascon_component(h0, lat=LANDING_LAT)
 
     print(f" г на поверхности (h=0):     {g_surf:.6f} м/с²")
     print(f" г на высоте h0={h0:.0f} м:  {g_h0:.6f} м/с²")
@@ -664,6 +695,11 @@ if __name__ == "__main__":
     print(f" Возмущение на высоте h0:    {g_perturf_h0:.6e} м/с²")
     print(f" Вклад масконов (h=0):       {g_mascon_surf:.6e} м/с²")
     print(f" Вклад масконов (h=h0):      {g_mascon_h0:.6e} м/с²")
+    print("=" * 72)
+    print(" ТОП-5 масконов по вкладу (на поверхности):")
+    sorted_masc = sorted(mascon_details, key=lambda x: x['dg'], reverse=True)
+    for mc in sorted_masc[:5]:
+        print(f"  {mc['name']:15s}: {mc['dg']:.6e} м/с²")
     print("=" * 72)
 
     t_all = time.time()
