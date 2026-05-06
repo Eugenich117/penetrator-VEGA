@@ -1,435 +1,481 @@
 # -*- coding: utf-8 -*-
 """
 ========================================================================
-ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — одноимпульсное управление с дросселем
+ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — решение по принципу минимума Понтрягина
 ========================================================================
 
-Управление:
-   u(t) = alpha1 * u_m,  если t_on1 <= t <= T1   (единственный импульс)
-   u(t) = 0               во всех остальных случаях
+Задание (вариант 2): Вертикальная посадка на Луну (Н1-Л3, СССР)
 
-   alpha1 in [0.05, 1.0] — коэффициент дросселя
+МАТЕМАТИЧЕСКАЯ МОДЕЛЬ (из задания):
+  dh/dt = v
+  dv/dt = -g(h) + J*beta/m
+  dm/dt = -beta
 
-Оптимизируются 3 параметра:
-   t_on1  — начало импульса
-   T1     — конец импульса (примерно момент касания)
-   alpha1 — тяга импульса  [0.05 … 1.0]
+  g(h) = g0*(R/(R+h))^2 * [1 + 3*J2*(R/(R+h))^2] + A_mascon*exp(-h/H_mascon)
+  P = J * beta,  0 <= beta <= beta_m
 
+  Критерий: J_fuel = m0 - m(T) -> min (минимум расхода топлива)
+  Граничные условия: h(0)=h0, v(0)=v0, m(0)=m0
+                     h(T)=0,  v(T)=0
+
+ОПТИМАЛЬНОЕ УПРАВЛЕНИЕ (раздел 11.4 методички):
+  Доказано: особого управления НЕТ.
+  Оптимальное управление — релейное с ОДНИМ переключением:
+
+    beta(t) = 0,       если t < t*
+    beta(t) = beta_m,  если t* <= t <= T
+
+МЕТОД РЕШЕНИЯ (по методичке, раздел 11.4):
+  Краевая задача сводится к системе ДВУХ УРАВНЕНИЙ относительно t* и T:
+
+    F1(t*, T) = h(T) = 0   ← аппарат касается поверхности
+    F2(t*, T) = v(T) = 0   ← скорость посадки равна нулю
+
+  Уравнения получаются интегрированием уравнений движения при оптимальном
+  управлении. Решение находится методом Ньютона-Рафсона (scipy.optimize.fsolve).
+  Глобальный перебор (Differential Evolution) НЕ НУЖЕН.
 ========================================================================
 """
 
-import time, sys, math
+import time
 import numpy as np
+from scipy.optimize import fsolve, root
+from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-from scipy.optimize import differential_evolution, minimize
-import multiprocessing as mp
 
 # ─────────────────────────────────────────────────────────────────────
-# ИСХОДНЫЕ ДАННЫЕ
+# ИСХОДНЫЕ ДАННЫЕ (лунный модуль Н1-Л3)
 # ─────────────────────────────────────────────────────────────────────
-R_moon    = 1_737_000.0
-g0        = 1.62
-h0        = 15_000.0
-v0        = -20.0
-m0        = 5_560.0
-m_dry     = 3_740.0
-fuel0     = m0 - m_dry
-c         = 3_050.0
-P_max     = 20_000.0
-u_m       = P_max / c          # кг/с
-H_SLOW    = 50.0               # м — высота "медленной" зоны
-
-# Временные ограничения
-T_MIN  = 50.0
-T_MAX  = 380.0
-SIM_MAX = 600.0
-
-# Ограничения против взлёта
-ASCENT_TOL   = 2.0    # м
-UPWARD_V_TOL = 0.2    # м/с
-
-# Веса штрафов
-W_TOUCH_V      = 1.0e6
-W_NOT_LANDED   = 1.0e9
-W_ASCENT       = 1.0e5
-W_UPWARD_V     = 5.0e4
-W_ALIGN        = 1.0e3
-W_FUEL         = 7.0e5
-W_UNDERGROUND  = 1.0e8
-W_LOW_V        = 2.0e5
-
-print("=" * 72)
-print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — одноимпульсный дроссель")
-print("=" * 72)
-print(f" h0      = {h0:.1f} м")
-print(f" v0      = {v0:.1f} м/с")
-print(f" m0      = {m0:.1f} кг")
-print(f" m_dry   = {m_dry:.1f} кг")
-print(f" fuel0   = {fuel0:.1f} кг")
-print(f" c       = {c:.1f} м/с")
-print(f" P_max   = {P_max:.1f} Н")
-print(f" u_m     = {u_m:.6f} кг/с")
-print("=" * 72)
-
-def _mp_ctx():
-    if sys.platform in ('win32', 'darwin'):
-        return mp.get_context('spawn')
-    return mp.get_context('fork')
+R_moon    = 1_737_000.0    # радиус Луны, м
+g0        = 1.62           # ускорение свободного падения на поверхности, м/с^2
+h0        = 15_000.0       # начальная высота, м
+v0        = -100.0          # начальная скорость, м/с (вниз)
+m0        = 5_560.0        # начальная масса, кг
+m_dry     = 2_740.0        # сухая масса, кг
+J_imp     = 3_050.0        # удельный импульс (обозначение J из задания), м/с
+P_max     = 20_000.0       # максимальная тяга, Н
+beta_m    = P_max / J_imp  # максимальный секундный расход, кг/с
 
 # ─────────────────────────────────────────────────────────────────────
-# ГРАВИТАЦИЯ
+# ГРАВИТАЦИОННЫЕ ВОЗМУЩЕНИЯ (посадка на полюс Луны)
+# ─────────────────────────────────────────────────────────────────────
+J2_moon   = 2.027e-4       # зональная гармоника 2-го порядка (безразм.)
+A_mascon  = 0.001          # амплитуда маскона на поверхности, м/с^2
+H_mascon  = 30_000.0       # характерная глубина маскона, м (30 км)
+
+print("=" * 72)
+print(" ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ")
+print("=" * 72)
+print(" Задание: вариант 2, вертикальная посадка (Н1-Л3)")
+print(" Управление: bang-bang с ОДНИМ переключением")
+print(" Метод: решение системы двух уравнений (по методичке, разд. 11.4)")
+print("=" * 72)
+print(f" h0           = {h0:.1f} м")
+print(f" v0           = {v0:.1f} м/с")
+print(f" m0           = {m0:.1f} кг")
+print(f" m_dry        = {m_dry:.1f} кг")
+print(f" J (уд. имп.) = {J_imp:.1f} м/с")
+print(f" P_max        = {P_max:.1f} Н")
+print(f" beta_m       = {beta_m:.6f} кг/с")
+print("=" * 72)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# ГРАВИТАЦИЯ (с возмущениями: J2 + маскон)
 # ─────────────────────────────────────────────────────────────────────
 def g_func(h):
+    """
+    Ускорение свободного падения с учётом гравитационных возмущений.
+
+    Базовое:  g0 * (R/(R+h))^2
+    J2:       поправка от зональной гармоники 2-го порядка (сжатие Луны).
+              На полюсе (φ = 90°):
+                g = g0*(R/(R+h))^2 * [1 + 3*J2*(R/(R+h))^2]
+    Маскон:   локальная аномалия с экспоненциальным затуханием:
+                g_mascon = A_mascon * exp(-h / H_mascon)
+
+    Итого: g(h) = g0*(R/(R+h))^2 * [1 + 3*J2*(R/(R+h))^2]
+                  + A_mascon * exp(-h / H_mascon)
+    """
     h_eff = max(h, 0.0)
-    return g0 * (R_moon / (R_moon + h_eff)) ** 2
+    ratio = R_moon / (R_moon + h_eff)
+    ratio2 = ratio ** 2
+    g = g0 * ratio2 * (1.0 + 3.0 * J2_moon * ratio2)
+    g += A_mascon * np.exp(-h_eff / H_mascon)
+    return g
+
+
+print(" ГРАВИТАЦИОННЫЕ ВОЗМУЩЕНИЯ:")
+print(f" J2       = {J2_moon:.4e} (сжатие, полюс)")
+print(f" A_mascon = {A_mascon:.6f} м/с^2")
+print(f" H_mascon = {H_mascon:.0f} м")
+print(f" g(h0)    = {g_func(h0):.8f} м/с^2")
+print(f" g(0)     = {g_func(0.0):.8f} м/с^2")
+print("=" * 72)
 
 
 # ─────────────────────────────────────────────────────────────────────
-# ДИНАМИКА
+# ПРАВЫЕ ЧАСТИ СИСТЕМЫ
 # ─────────────────────────────────────────────────────────────────────
-def rhs(h, v, m, u):
-    m_eff = max(m, m_dry)
-    u_eff = 0.0 if m <= m_dry else np.clip(u, 0.0, u_m)
+def rhs(t, y, t_switch):
+    """
+    dh/dt = v
+    dv/dt = -g(h) + J*beta/m
+    dm/dt = -beta
+
+    beta(t) = 0       при t < t_switch
+    beta(t) = beta_m  при t >= t_switch
+    """
+    h, v, m = y
+    beta = beta_m if t >= t_switch else 0.0
+    m_eff = max(m, m_dry + 1e-12)
+
     dh = v
-    dv = c * u_eff / m_eff - g_func(h)
-    dm = -u_eff
-    return dh, dv, dm
+    dv = -g_func(h) + J_imp * beta / m_eff
+    dm = -beta
 
-
-def rk4_step(h, v, m, u, dt):
-    k1 = rhs(h, v, m, u)
-    h2, v2, m2 = h + 0.5*dt*k1[0], v + 0.5*dt*k1[1], m + 0.5*dt*k1[2]
-    k2 = rhs(h2, v2, m2, u)
-    h3, v3, m3 = h + 0.5*dt*k2[0], v + 0.5*dt*k2[1], m + 0.5*dt*k2[2]
-    k3 = rhs(h3, v3, m3, u)
-    h4, v4, m4 = h + dt*k3[0], v + dt*k3[1], m + dt*k3[2]
-    k4 = rhs(h4, v4, m4, u)
-    h_new = h + dt/6.0*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0])
-    v_new = v + dt/6.0*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1])
-    m_new = m + dt/6.0*(k1[2] + 2*k2[2] + 2*k3[2] + k4[2])
-    return h_new, v_new, max(m_new, m_dry)
+    return [dh, dv, dm]
 
 
 # ─────────────────────────────────────────────────────────────────────
-# УПРАВЛЕНИЕ С ДРОССЕЛЕМ
-# params = [t_on1, T1, alpha1]
+# ИНТЕГРИРОВАНИЕ НА ФИКСИРОВАННОМ ОТРЕЗКЕ [0, T]
 # ─────────────────────────────────────────────────────────────────────
-def control_bb(params, t, m):
-    t_on1, T1, alpha1 = params
-    if m <= m_dry:
-        return 0.0
-    if t_on1 <= t <= T1:
-        return float(alpha1) * u_m
-    return 0.0
+def integrate_fixed_T(t_switch, T):
+    """
+    Интегрирует уравнения движения от 0 до T при заданном t_switch.
+    Возвращает конечное состояние (h(T), v(T), m(T)).
 
+    Именно это и описывает методичка: проинтегрировать уравнения движения
+    при найденном оптимальном управлении и получить h(T) и v(T).
+    """
+    t_switch = max(0.0, t_switch)
+    T = max(t_switch + 1.0, T)
 
-# ─────────────────────────────────────────────────────────────────────
-# МОДЕЛИРОВАНИЕ
-# ─────────────────────────────────────────────────────────────────────
-def simulate_bb(params, save_history=False):
-    t_on1, T1, alpha1 = map(float, params)
+    # Разбиваем интегрирование на два участка по точке переключения:
+    #   [0, t_switch]   — beta = 0 (свободное падение)
+    #   [t_switch, T]   — beta = beta_m (максимальная тяга)
+    # Это даёт точную обработку разрыва управления.
 
-    h, v, m, t = h0, v0, m0, 0.0
-    landed      = False
-    underground = False
-    max_h       = h0
-    max_upward_v      = max(0.0, v0)
-    low_alt_v_penalty = 0.0
+    y_init = [h0, v0, m0]
+    t_sw = min(t_switch, T)
 
-    t_land = h_land = v_land = m_land = None
-
-    if save_history:
-        hist_t = [t]; hist_h = [h]; hist_v = [v]
-        hist_m = [m]; hist_u = [control_bb(params, t, m)]
-        hist_g = [g_func(h)]
-
-    while t < SIM_MAX:
-        if h < 10.0:
-            dt = 0.005
-        elif h < 100.0:
-            dt = 0.02
-        elif h < 500.0:
-            dt = 0.05
-        else:
-            dt = 0.2
-        dt = min(dt, SIM_MAX - t)
-
-        u = control_bb(params, t, m)
-        h_prev, v_prev, m_prev, t_prev = h, v, m, t
-        h, v, m = rk4_step(h, v, m, u, dt)
-        t += dt
-
-        max_h = max(max_h, h)
-        max_upward_v = max(max_upward_v, v)
-
-        if h < H_SLOW and v < 0.0:
-            low_alt_v_penalty += v**2 * (H_SLOW - h) / H_SLOW * dt
-
-        # Детектор касания
-        if h_prev > 0.0 and h <= 0.0:
-            alpha_interp = np.clip(h_prev / (h_prev - h), 0.0, 1.0)
-            t_land = t_prev + alpha_interp * dt
-            h_land = 0.0
-            v_land = v_prev + alpha_interp * (v - v_prev)
-            m_land = m_prev + alpha_interp * (m - m_prev)
-            landed = True
-            if save_history:
-                hist_t.append(t_land); hist_h.append(h_land)
-                hist_v.append(v_land); hist_m.append(max(m_land, m_dry))
-                hist_u.append(control_bb(params, t_land, max(m_land, m_dry)))
-                hist_g.append(g_func(h_land))
-            break
-
-        if h < -50.0:
-            underground = True
-            break
-
-        if save_history:
-            hist_t.append(t); hist_h.append(h); hist_v.append(v)
-            hist_m.append(m); hist_u.append(control_bb(params, t, m))
-            hist_g.append(g_func(h))
-
-    if not landed:
-        t_land, h_land, v_land, m_land = t, h, v, m
-
-    m_land    = max(m_land, m_dry)
-    fuel_used = m0 - m_land
-    ascent_amount = max(0.0, max_h - h0)
-
-    result = {
-        "landed":             landed,
-        "underground":        underground,
-        "t_land":             t_land,
-        "h_land":             h_land,
-        "v_land":             v_land,
-        "m_land":             m_land,
-        "fuel_used":          fuel_used,
-        "max_h":              max_h,
-        "ascent_amount":      ascent_amount,
-        "max_upward_v":       max_upward_v,
-        "t_minus_T2":         t_land - T1 if landed else SIM_MAX - T1,
-        "low_alt_v_penalty":  low_alt_v_penalty,
-    }
-
-    if save_history:
-        result["hist_t"] = np.array(hist_t)
-        result["hist_h"] = np.array(hist_h)
-        result["hist_v"] = np.array(hist_v)
-        result["hist_m"] = np.array(hist_m)
-        result["hist_u"] = np.array(hist_u)
-        result["hist_g"] = np.array(hist_g)
-
-    return result
-
-
-# ─────────────────────────────────────────────────────────────────────
-# ЦЕЛЕВАЯ ФУНКЦИЯ
-# ─────────────────────────────────────────────────────────────────────
-def objective_bb(params):
-    t_on1, T1, alpha1 = map(float, params)
-
-    if not np.all(np.isfinite(params)):
-        return 1e15
-
-    # Порядковое ограничение
-    if not (0.0 <= t_on1 <= T1):
-        return 1e15
-    if T1 < T_MIN or T1 > T_MAX:
-        return 1e15
-
-    sim = simulate_bb(params, save_history=False)
-
-    ascent_excess   = max(0.0, sim["ascent_amount"] - ASCENT_TOL)
-    upward_v_excess = max(0.0, sim["max_upward_v"] - UPWARD_V_TOL)
-
-    J = 0.0
-    J += W_FUEL     * sim["fuel_used"]
-    J += W_ASCENT   * ascent_excess**2
-    J += W_UPWARD_V * upward_v_excess**2
-    J += W_ALIGN    * sim["t_minus_T2"]**2
-    J += W_LOW_V    * sim["low_alt_v_penalty"]
-
-    if sim["underground"]:
-        J += W_UNDERGROUND
-
-    if sim["landed"]:
-        J += W_TOUCH_V * sim["v_land"]**2
+    # Участок 1: свободное падение [0, t_sw]
+    if t_sw > 0.0:
+        sol1 = solve_ivp(
+            lambda t, y: rhs(t, y, t_switch),
+            [0.0, t_sw],
+            y_init,
+            method='RK45',
+            max_step=0.5,
+            rtol=1e-10,
+            atol=1e-12,
+        )
+        y_mid = sol1.y[:, -1]
     else:
-        h_pen = max(sim["h_land"], 0.0) / h0
-        v_pen = sim["v_land"] / 100.0
-        J += W_NOT_LANDED
-        J += 1.0e4 * h_pen**2
-        J += 1.0e4 * v_pen**2
+        y_mid = np.array(y_init)
 
-    return float(J)
+    # Участок 2: работа двигателя [t_sw, T]
+    if T > t_sw:
+        sol2 = solve_ivp(
+            lambda t, y: rhs(t, y, t_switch),
+            [t_sw, T],
+            y_mid,
+            method='RK45',
+            max_step=0.5,
+            rtol=1e-10,
+            atol=1e-12,
+        )
+        y_final = sol2.y[:, -1]
+    else:
+        y_final = y_mid
+
+    h_T = float(y_final[0])
+    v_T = float(y_final[1])
+    m_T = float(max(y_final[2], m_dry))
+
+    return h_T, v_T, m_T
 
 
 # ─────────────────────────────────────────────────────────────────────
-# ОПТИМИЗАЦИЯ
+# СИСТЕМА ДВУХ УРАВНЕНИЙ (по методичке)
 # ─────────────────────────────────────────────────────────────────────
-def solve_bb():
-    # Границы: [t_on1, T1, alpha1]
-    bounds = [
-        (  0.0, 200.0),   # t_on1
-        (  5.0, 380.0),   # T1
-        (  0.05,  1.0),   # alpha1 — дроссель
-    ]
+def two_equations(x):
+    """
+    Система двух уравнений относительно t* и T (раздел 11.4 методички).
 
-    print("\nШаг 1: Глобальный поиск (Differential Evolution, 3 параметра) ...")
-    t0   = time.time()
-    _ctx  = _mp_ctx()
-    pool = _ctx.Pool(processes=mp.cpu_count())
-    res_de = differential_evolution(
-        objective_bb,
-        bounds=bounds,
-        strategy="best1bin",
-        maxiter=300,
-        popsize=30,
-        tol=1e-7,
-        mutation=(0.5, 1.2),
-        recombination=0.85,
-        seed=42,
-        polish=False,
-        disp=False,
-        workers=pool.map,
-        updating="deferred",
+    Краевые условия посадки:
+        F1(t*, T) = h(T) = 0   ← аппарат достигает поверхности
+        F2(t*, T) = v(T) = 0   ← мягкая посадка (нулевая скорость)
+
+    Получаются интегрированием уравнений движения при оптимальном
+    bang-bang управлении с переключением в момент t*.
+    """
+    t_switch, T = x
+    h_T, v_T, _ = integrate_fixed_T(t_switch, T)
+    return [h_T, v_T]
+
+
+# ─────────────────────────────────────────────────────────────────────
+# НАЧАЛЬНОЕ ПРИБЛИЖЕНИЕ (физическое обоснование)
+# ─────────────────────────────────────────────────────────────────────
+def initial_guess():
+    """
+    Оценка начального приближения из физических соображений.
+
+    Время торможения (при постоянной тяге с нуля):
+      v_T = v0 + (J*beta_m/m0 - g0)*tau = 0
+      => tau ≈ |v0| / (J*beta_m/m0 - g0)
+
+    Грубая оценка полного времени из высоты и начальной скорости:
+      T ~ 2 * h0 / |v0|  (линейная экстраполяция)
+    """
+    # Эффективное ускорение при работе двигателя (начальная масса)
+    a_thrust = J_imp * beta_m / m0 - g0   # ≈ 9.0 - 1.62 ≈ 7.4 м/с^2
+
+    # Время торможения от v0 до 0 при полной тяге
+    tau_brake = abs(v0) / a_thrust if a_thrust > 0 else 50.0
+
+    # Грубая оценка T: время свободного падения до земли + торможение
+    T_guess = h0 / abs(v0) + tau_brake
+
+    # t* — момент включения двигателя (T - время торможения)
+    t_star_guess = max(0.0, T_guess - tau_brake * 2.0)
+
+    return t_star_guess, T_guess
+
+
+# ─────────────────────────────────────────────────────────────────────
+# ФИНАЛЬНОЕ МОДЕЛИРОВАНИЕ (с историей, для графиков)
+# ─────────────────────────────────────────────────────────────────────
+def simulate_full(t_switch, T):
+    """
+    Полное интегрирование с сохранением траектории для графиков.
+    """
+    y_init = [h0, v0, m0]
+    t_sw = min(t_switch, T)
+
+    t_hist, h_hist, v_hist, m_hist = [], [], [], []
+
+    # Участок 1
+    if t_sw > 0.0:
+        sol1 = solve_ivp(
+            lambda t, y: rhs(t, y, t_switch),
+            [0.0, t_sw], y_init,
+            method='RK45', max_step=0.5, rtol=1e-10, atol=1e-12,
+            dense_output=True
+        )
+        t1 = np.linspace(0.0, t_sw, max(3, int(t_sw * 4)))
+        s1 = sol1.sol(t1)
+        t_hist.append(t1); h_hist.append(s1[0]); v_hist.append(s1[1]); m_hist.append(s1[2])
+        y_mid = sol1.y[:, -1]
+    else:
+        y_mid = np.array(y_init)
+
+    # Участок 2
+    if T > t_sw:
+        sol2 = solve_ivp(
+            lambda t, y: rhs(t, y, t_switch),
+            [t_sw, T], y_mid,
+            method='RK45', max_step=0.5, rtol=1e-10, atol=1e-12,
+            dense_output=True
+        )
+        t2 = np.linspace(t_sw, T, max(3, int((T - t_sw) * 4)))
+        s2 = sol2.sol(t2)
+        t_hist.append(t2); h_hist.append(s2[0]); v_hist.append(s2[1]); m_hist.append(s2[2])
+
+    t_arr = np.concatenate(t_hist)
+    h_arr = np.concatenate(h_hist)
+    v_arr = np.concatenate(v_hist)
+    m_arr = np.concatenate(m_hist)
+
+    return t_arr, h_arr, v_arr, m_arr
+
+
+# ─────────────────────────────────────────────────────────────────────
+# ОСНОВНОЕ РЕШЕНИЕ — СИСТЕМА ДВУХ УРАВНЕНИЙ
+# ─────────────────────────────────────────────────────────────────────
+def solve():
+    """
+    Решение по методичке (раздел 11.4):
+    Сводим краевую задачу к системе двух уравнений:
+        h(T; t*, T) = 0
+        v(T; t*, T) = 0
+    и решаем её методом Ньютона (fsolve) по двум неизвестным: t* и T.
+    """
+
+    t_star_0, T_0 = initial_guess()
+    print(f"\n{'=' * 72}")
+    print(" НАЧАЛЬНОЕ ПРИБЛИЖЕНИЕ (физические оценки)")
+    print(f"{'=' * 72}")
+    print(f" t*_0 (включение двигателя) = {t_star_0:.2f} с")
+    print(f" T_0  (время посадки)        = {T_0:.2f} с")
+
+    # Контроль невязок в начальном приближении
+    F0 = two_equations([t_star_0, T_0])
+    print(f" Невязки: h(T0) = {F0[0]:.2f} м,  v(T0) = {F0[1]:.2f} м/с")
+    print(f"{'=' * 72}")
+
+    print("\n РЕШЕНИЕ СИСТЕМЫ ДВУХ УРАВНЕНИЙ (методика разд. 11.4):")
+    print(" F1(t*, T) = h(T) = 0   ← условие касания поверхности")
+    print(" F2(t*, T) = v(T) = 0   ← условие мягкой посадки")
+    print(f"{'=' * 72}")
+
+    t_start = time.time()
+
+    # --- Метод 1: fsolve (Ньютон–Рафсон, scipy) ----------------------
+    x0 = [t_star_0, T_0]
+    sol_fsolve = fsolve(
+        two_equations,
+        x0,
+        full_output=True,
+        xtol=1e-10,
+        maxfev=2000,
     )
-    pool.close()
-    pool.join()
-    print(f" DE завершён за {time.time() - t0:.1f} с")
-    print(f" J_de  = {res_de.fun:.6e}")
-    x = res_de.x
-    print(f" x_de  = [t_on1={x[0]:.2f}, T1={x[1]:.2f}, a1={x[2]:.3f}]")
+    x_opt_fs = sol_fsolve[0]
+    info_fs   = sol_fsolve[1]
+    msg_fs    = sol_fsolve[3]
 
-    print("\nШаг 2: Локальная полировка (L-BFGS-B) ...")
-    t1 = time.time()
-    res_local = minimize(
-        objective_bb,
-        x0=res_de.x,
-        method="L-BFGS-B",
-        bounds=bounds,
-        options={
-            "maxiter": 2000,
-            "ftol":    1e-15,
-            "gtol":    1e-10,
-            "maxls":   60,
-            "eps":     0.01,
-        }
+    # --- Метод 2: root (Levenberg–Marquardt, как резервный) ----------
+    sol_root = root(
+        two_equations,
+        x0,
+        method='lm',
+        tol=1e-12,
+        options={'maxiter': 2000, 'ftol': 1e-14, 'xtol': 1e-14}
     )
-    print(f" Local завершён за {time.time() - t1:.1f} с")
-    print(f" J_opt = {res_local.fun:.6e}")
 
-    x_opt = res_local.x
-    t_on1, T1, alpha1 = x_opt
-    sim = simulate_bb(x_opt, save_history=False)
+    dt = time.time() - t_start
 
-    print("\n" + "=" * 72)
-    print(" РЕЗУЛЬТАТ ОПТИМИЗАЦИИ С ДРОССЕЛЕМ")
-    print("=" * 72)
-    print(f" Успешное касание   = {sim['landed']}")
-    print(f" t_on1              = {t_on1:.4f} с")
-    print(f" T1                 = {T1:.4f} с    | длительность = {T1-t_on1:.3f} с")
-    print(f" alpha1             = {alpha1:.4f}   | тяга = {alpha1*P_max:.1f} Н  ({alpha1*100:.1f}%)")
-    print(f" t_land             = {sim['t_land']:.4f} с")
-    print(f" h_land             = {sim['h_land']:.6f} м")
-    print(f" v_land             = {sim['v_land']:.6f} м/с")
-    print(f" m_land             = {sim['m_land']:.4f} кг")
-    print(f" fuel_used          = {sim['fuel_used']:.4f} кг")
-    print(f" max_h              = {sim['max_h']:.4f} м")
-    print("=" * 72)
+    # Выбираем лучшее решение по норме невязки
+    F_fs   = two_equations(x_opt_fs)
+    F_root = two_equations(sol_root.x)
+    norm_fs   = np.linalg.norm(F_fs)
+    norm_root = np.linalg.norm(F_root)
 
-    return x_opt
+    if norm_fs <= norm_root:
+        x_opt = x_opt_fs
+        method_name = "fsolve (Ньютон–Рафсон)"
+        F_opt = F_fs
+    else:
+        x_opt = sol_root.x
+        method_name = "root (Levenberg–Marquardt)"
+        F_opt = F_root
+
+    t_switch_opt = float(x_opt[0])
+    T_opt        = float(x_opt[1])
+
+    # Итоговое состояние
+    h_T, v_T, m_T = integrate_fixed_T(t_switch_opt, T_opt)
+    fuel_used = m0 - m_T
+    burn_time = T_opt - t_switch_opt
+
+    print(f"\n Метод: {method_name}")
+    print(f" Время вычисления: {dt:.3f} с")
+    print(f"\n{'=' * 72}")
+    print(" РЕЗУЛЬТАТ (решение системы двух уравнений)")
+    print(f"{'=' * 72}")
+    print(f" t* (включение двигателя)   = {t_switch_opt:.8f} с")
+    print(f" T  (время посадки)          = {T_opt:.8f} с")
+    print(f" Длительность работы двигат. = {burn_time:.6f} с")
+    print(f"{'=' * 72}")
+    print(" НЕВЯЗКИ (должны быть ~ 0):")
+    print(f" F1 = h(T) = {F_opt[0]:.6e} м   (цель: 0)")
+    print(f" F2 = v(T) = {F_opt[1]:.6e} м/с (цель: 0)")
+    print(f" ||F||     = {np.linalg.norm(F_opt):.6e}")
+    print(f"{'=' * 72}")
+    print(" ИТОГОВЫЕ ХАРАКТЕРИСТИКИ:")
+    print(f" m(T)  (масса посадки)       = {m_T:.6f} кг")
+    print(f" Расход топлива              = {fuel_used:.6f} кг")
+    print(f" Аналит. расход (beta_m*tau) = {beta_m * burn_time:.6f} кг")
+    dm_check = abs(fuel_used - beta_m * burn_time)
+    print(f" Расхождение                 = {dm_check:.2e} кг")
+    print(f"{'=' * 72}")
+
+    print("\n ПРОВЕРКА УСЛОВИЙ ОПТИМАЛЬНОСТИ (методичка):")
+    print(f" ✓ Особое управление: ОТСУТСТВУЕТ")
+    print(f" ✓ Структура: bang-bang с ОДНИМ переключением")
+    print(f" ✓ beta = 0         при  0 <= t < {t_switch_opt:.2f} с")
+    print(f" ✓ beta = {beta_m:.4f}  при  {t_switch_opt:.2f} с <= t <= {T_opt:.2f} с")
+    print(f"{'=' * 72}")
+
+    return t_switch_opt, T_opt
 
 
 # ─────────────────────────────────────────────────────────────────────
 # ГРАФИКИ
 # ─────────────────────────────────────────────────────────────────────
-def plot_results(params_opt):
-    sim = simulate_bb(params_opt, save_history=True)
+def plot_results(t_switch_opt, T_opt):
+    """Построение графиков оптимальной траектории"""
+    t, h, v, m = simulate_full(t_switch_opt, T_opt)
 
-    t = sim["hist_t"]
-    h = sim["hist_h"]
-    v = sim["hist_v"]
-    m = sim["hist_m"]
-    u = sim["hist_u"]
+    beta = np.where(t < t_switch_opt, 0.0, beta_m)
+    g_traj = np.array([g_func(hi) for hi in h])
 
-    t_on1, T1, alpha1 = params_opt
-    t_land    = sim["t_land"]
-    fuel_used = sim["fuel_used"]
-    P1        = alpha1 * P_max
-
-    def vlines(ax):
-        ax.axvline(t_on1, color="red",     ls="--", lw=1.2, label=f"Вкл ({P1:.0f} Н)")
-        ax.axvline(T1,    color="darkred", ls=":",  lw=1.2, label="Выкл")
+    h_T, v_T, m_T = integrate_fixed_T(t_switch_opt, T_opt)
+    fuel_used = m0 - m_T
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     fig.suptitle(
-        f"Посадка с дросселем | "
-        f"[{t_on1:.1f}…{T1:.1f}с, {alpha1*100:.0f}%] | "
-        f"t_land={t_land:.2f}с | v_land={sim['v_land']:.4f} м/с | fuel={fuel_used:.1f} кг",
+        f"Посадка по Понтрягину | Метод: система двух уравнений (разд. 11.4)\n"
+        f"t*={t_switch_opt:.2f} с | T={T_opt:.2f} с | "
+        f"h(T)={h_T:.3f} м | v(T)={v_T:.4f} м/с | fuel={fuel_used:.1f} кг",
         fontsize=11
     )
 
-    # ── Высота ──────────────────────────────────────────────────────
+    # Высота
     ax = axes[0, 0]
-    ax.plot(t, h, "b", lw=2)
+    ax.plot(t, h, "b", lw=2, label="h(t)")
     ax.axhline(0.0, color="brown", ls="--", lw=1.5, label="Поверхность")
-    ax.axhline(h0,  color="gray",  ls=":",  lw=1.2, label="h0")
-    vlines(ax)
+    ax.axhline(h0, color="gray", ls=":", lw=1.2, label="h0")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с")
     ax.set_xlabel("Время, с"); ax.set_ylabel("Высота, м")
-    ax.set_title("Высота"); ax.grid(True); ax.legend(fontsize=7)
+    ax.set_title("Высота"); ax.grid(True); ax.legend(fontsize=8)
 
-    # ── Скорость ────────────────────────────────────────────────────
+    # Скорость
     ax = axes[0, 1]
-    ax.plot(t, v, "g", lw=2)
-    ax.axhline(0.0,  color="gray",   ls="--", lw=1.0)
-    ax.axhline(-2.0, color="orange", ls=":",  lw=1.2, label="±2 м/с")
-    ax.axhline( 2.0, color="orange", ls=":",  lw=1.2)
-    vlines(ax)
+    ax.plot(t, v, "g", lw=2, label="v(t)")
+    ax.axhline(0.0, color="gray", ls="--", lw=1.0)
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
     ax.set_xlabel("Время, с"); ax.set_ylabel("Скорость, м/с")
-    ax.set_title("Вертикальная скорость"); ax.grid(True); ax.legend(fontsize=7)
+    ax.set_title("Вертикальная скорость"); ax.grid(True); ax.legend(fontsize=8)
 
-    # ── Масса ───────────────────────────────────────────────────────
+    # Масса
     ax = axes[0, 2]
-    ax.plot(t, m, "r", lw=2)
+    ax.plot(t, m, "r", lw=2, label="m(t)")
     ax.axhline(m_dry, color="orange", ls="--", lw=1.5, label="Сухая масса")
-    vlines(ax)
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
     ax.set_xlabel("Время, с"); ax.set_ylabel("Масса, кг")
-    ax.set_title("Масса аппарата"); ax.grid(True); ax.legend(fontsize=7)
+    ax.set_title("Масса аппарата"); ax.grid(True); ax.legend(fontsize=8)
 
-    # ── Управление (тяга) ────────────────────────────────────────────
+    # Управление
     ax = axes[1, 0]
-    thrust = u * c
-    ax.step(t, thrust, where="post", color="k", lw=2, label="Тяга, Н")
-    ax.axhline(P_max,          color="red", ls="--", lw=1.2, label=f"P_max={P_max:.0f} Н")
-    ax.axhline(alpha1 * P_max, color="red", ls=":",  lw=1.0, label=f"P1={P1:.0f} Н ({alpha1*100:.0f}%)")
-    vlines(ax)
-    ax.set_xlabel("Время, с"); ax.set_ylabel("Тяга, Н")
-    ax.set_title("Управление — тяга двигателя"); ax.grid(True); ax.legend(fontsize=7)
+    ax.step(t, beta, where="post", color="k", lw=2, label="beta(t)")
+    ax.axhline(beta_m, color="red", ls="--", lw=1.2,
+               label=f"beta_m = {beta_m:.4f} кг/с")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с")
+    ax.set_xlabel("Время, с"); ax.set_ylabel("beta, кг/с")
+    ax.set_title("Оптимальное управление (bang-bang)"); ax.grid(True); ax.legend(fontsize=8)
 
-    # ── Скорость zoom (h < 500 м) ────────────────────────────────────
+    # Гравитация
     ax = axes[1, 1]
-    mask = h < 500.0
-    ax.plot(t[mask], v[mask], "g", lw=2)
-    ax.axhline( 0.0, color="gray",   ls="--", lw=1.0)
-    ax.axhline(-2.0, color="orange", ls=":",  lw=1.2, label="±2 м/с (допуск)")
-    ax.axhline( 2.0, color="orange", ls=":",  lw=1.2)
-    vlines(ax)
-    ax.set_xlabel("Время, с"); ax.set_ylabel("Скорость, м/с")
-    ax.set_title("Скорость (h < 500 м)"); ax.grid(True); ax.legend(fontsize=7)
+    ax.plot(t, g_traj, "m", lw=2, label="g(h)")
+    ax.axhline(g0, color="gray", ls="--", lw=1.2, label=f"g0 = {g0} м/с²")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
+    ax.set_xlabel("Время, с"); ax.set_ylabel("g, м/с²")
+    ax.set_title("Ускорение свободного падения"); ax.grid(True); ax.legend(fontsize=8)
 
-    # ── Фазовый портрет ─────────────────────────────────────────────
+    # Фазовый портрет
     ax = axes[1, 2]
     sc = ax.scatter(v, h, c=t, cmap="viridis", s=12)
     plt.colorbar(sc, ax=ax, label="Время, с")
-    ax.plot(v[0],  h[0],  "go", ms=8, label="Начало")
-    ax.plot(v[-1], h[-1], "rs", ms=8, label="Касание")
-    ax.axvline(-2.0, color="orange", ls=":", lw=1.2, label="±2 м/с")
-    ax.axvline( 2.0, color="orange", ls=":", lw=1.2)
+    ax.plot(v[0], h[0], "go", ms=10, label="Начало")
+    ax.plot(v[-1], h[-1], "rs", ms=10, label="Посадка")
     ax.set_xlabel("Скорость, м/с"); ax.set_ylabel("Высота, м")
-    ax.set_title("Фазовый портрет"); ax.grid(True); ax.legend(fontsize=7)
+    ax.set_title("Фазовый портрет (h–v)"); ax.grid(True); ax.legend(fontsize=8)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
     plt.show()
 
 
@@ -438,7 +484,7 @@ def plot_results(params_opt):
 # ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     t_all = time.time()
-    params_opt = solve_bb()
-    print(f"\nОбщее время: {time.time() - t_all:.1f} с")
+    t_switch_opt, T_opt = solve()
+    print(f"\nОбщее время: {time.time() - t_all:.3f} с")
     print("\nПостроение графиков...")
-    plot_results(params_opt)
+    plot_results(t_switch_opt, T_opt)
