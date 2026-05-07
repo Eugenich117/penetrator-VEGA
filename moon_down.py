@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 ========================================================================
 ОПТИМАЛЬНАЯ ПОСАДКА НА ЛУНУ — решение по принципу минимума Понтрягина
@@ -404,8 +403,123 @@ def solve():
 # ─────────────────────────────────────────────────────────────────────
 # ГРАФИКИ
 # ─────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────
+# СОПРЯЖЁННАЯ СИСТЕМА (принцип минимума Понтрягина)
+# ─────────────────────────────────────────────────────────────────────
+def compute_conjugate(t_arr, h_arr, v_arr, m_arr, t_switch_opt):
+    """
+    Сопряжённые переменные (косостоятельные, costate) для задачи
+    минимального расхода топлива:
+
+    Гамильтониан:
+      H = psi_h * v + psi_v * (-g(h) + J*beta/m) + psi_m * (-beta) + 0
+      (свободный член = 0, т.к. критерий — терминальный: m(T) -> max)
+
+    Уравнения для сопряжённых переменных:
+      dpsi_h/dt = -dH/dh = psi_v * dg/dh
+      dpsi_v/dt = -dH/dv = -psi_h
+      dpsi_m/dt = -dH/dm = -psi_v * J * beta / m^2
+
+    Граничные условия (трансверсальности):
+      psi_h(T) = nu1  (множитель при h(T)=0)
+      psi_v(T) = nu2  (множитель при v(T)=0)
+      psi_m(T) = -1   (т.к. критерий = -m(T), то dPhi/dm = -1)
+                       => psi_m(T) = 1 в задаче максимизации m(T),
+                          здесь минимизируем расход => psi_m(T) = -1
+
+    Функция переключения:
+      sigma(t) = psi_v(t) * J / m(t) - psi_m(t)
+      beta = beta_m если sigma > 0
+      beta = 0      если sigma < 0
+      Переключение при sigma(t*) = 0
+
+    Метод нахождения начальных условий:
+    Интегрируем назад от T с начальными psi_h(T)=0, psi_v(T)=0, psi_m(T)=-1
+    (граничные условия на свободный конец по h и v — подбираются автоматически,
+     т.к. краевые условия дают nu1, nu2 из условия H=const).
+    На практике для bang-bang задачи достаточно нормировки psi_m(T)=-1
+    и интегрирования назад, чтобы получить качественный портрет.
+    """
+    n = len(t_arr)
+    T = t_arr[-1]
+
+    # Производная гравитации по высоте (численно)
+    def dg_dh(h):
+        dh_num = max(abs(h) * 1e-6, 1.0)
+        return (g_func(h + dh_num) - g_func(h - dh_num)) / (2 * dh_num)
+
+    # Правые части сопряжённой системы
+    def costate_rhs(t, psi, h_interp, v_interp, m_interp, t_sw):
+        h_val = float(h_interp(t))
+        v_val = float(v_interp(t))
+        m_val = float(m_interp(t))
+        beta = beta_m if t >= t_sw else 0.0
+        m_eff = max(m_val, m_dry + 1e-12)
+
+        psi_h, psi_v, psi_m = psi
+
+        dpsi_h = psi_v * dg_dh(h_val)
+        dpsi_v = -psi_h
+        dpsi_m = -psi_v * J_imp * beta / (m_eff ** 2)
+
+        return [dpsi_h, dpsi_v, dpsi_m]
+
+    from scipy.interpolate import interp1d
+
+    # Убираем дубликаты по времени
+    _, uniq_idx = np.unique(t_arr, return_index=True)
+    t_u = t_arr[uniq_idx]; h_u = h_arr[uniq_idx]
+    v_u = v_arr[uniq_idx]; m_u = m_arr[uniq_idx]
+    h_interp = interp1d(t_u, h_u, kind='cubic', fill_value='extrapolate')
+    v_interp = interp1d(t_u, v_u, kind='cubic', fill_value='extrapolate')
+    m_interp = interp1d(t_u, m_u, kind='cubic', fill_value='extrapolate')
+
+    # Терминальные условия: psi_m(T) = -1, psi_h(T) и psi_v(T) — свободны
+    # Нормировка: psi_m(T) = -1 (критерий минимум расхода = максимум m)
+    # psi_h(T) = 0, psi_v(T) свободна — условие трансверсальности
+    # Из условия sigma(T) = 0 (двигатель включён до T): psi_v(T)*J/m(T) - psi_m(T) >= 0
+    # Устанавливаем psi_v(T) = m_arr[-1] / J_imp  (граница переключения в T)
+    psi_h_T = 0.0
+    psi_v_T = m_arr[-1] / J_imp  # нормировка: sigma(T) ≈ 0
+    psi_m_T = -1.0
+
+    psi0_back = [psi_h_T, psi_v_T, psi_m_T]
+
+    # Интегрируем НАЗАД от T до 0
+    sol_back = solve_ivp(
+        lambda t, psi: costate_rhs(t, psi, h_interp, v_interp, m_interp, t_switch_opt),
+        [T, 0.0],
+        psi0_back,
+        method='RK45',
+        max_step=0.5,
+        rtol=1e-9,
+        atol=1e-11,
+    )
+
+    t_back = sol_back.t[::-1]
+    psi_h_back = sol_back.y[0][::-1]
+    psi_v_back = sol_back.y[1][::-1]
+    psi_m_back = sol_back.y[2][::-1]
+
+    # Интерполируем на исходную сетку t_arr
+    from scipy.interpolate import interp1d as interp1d2
+    psi_h_interp = interp1d2(t_back, psi_h_back, kind='cubic', fill_value='extrapolate')
+    psi_v_interp = interp1d2(t_back, psi_v_back, kind='cubic', fill_value='extrapolate')
+    psi_m_interp = interp1d2(t_back, psi_m_back, kind='cubic', fill_value='extrapolate')
+
+    psi_h = psi_h_interp(t_arr)
+    psi_v = psi_v_interp(t_arr)
+    psi_m = psi_m_interp(t_arr)
+
+    # Функция переключения: sigma = psi_v * J / m - psi_m
+    m_safe = np.maximum(m_arr, m_dry + 1e-12)
+    sigma = psi_v * J_imp / m_safe - psi_m
+
+    return psi_h, psi_v, psi_m, sigma
+
+
 def plot_results(t_switch_opt, T_opt):
-    """Построение графиков оптимальной траектории"""
+    """Построение графиков оптимальной траектории + сопряжённых переменных"""
     t, h, v, m = simulate_full(t_switch_opt, T_opt)
 
     beta = np.where(t < t_switch_opt, 0.0, beta_m)
@@ -414,8 +528,12 @@ def plot_results(t_switch_opt, T_opt):
     h_T, v_T, m_T = integrate_fixed_T(t_switch_opt, T_opt)
     fuel_used = m0 - m_T
 
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle(
+    # --- Вычисляем сопряжённые переменные ---
+    psi_h, psi_v, psi_m, sigma = compute_conjugate(t, h, v, m, t_switch_opt)
+
+    # ── Рисунок 1: основные состояния (2×3) ──────────────────────────
+    fig1, axes1 = plt.subplots(2, 3, figsize=(18, 10))
+    fig1.suptitle(
         f"Посадка по Понтрягину | Метод: система двух уравнений (разд. 11.4)\n"
         f"t*={t_switch_opt:.2f} с | T={T_opt:.2f} с | "
         f"h(T)={h_T:.3f} м | v(T)={v_T:.4f} м/с | fuel={fuel_used:.1f} кг",
@@ -423,7 +541,7 @@ def plot_results(t_switch_opt, T_opt):
     )
 
     # Высота
-    ax = axes[0, 0]
+    ax = axes1[0, 0]
     ax.plot(t, h, "b", lw=2, label="h(t)")
     ax.axhline(0.0, color="brown", ls="--", lw=1.5, label="Поверхность")
     ax.axhline(h0, color="gray", ls=":", lw=1.2, label="h0")
@@ -433,7 +551,7 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_title("Высота"); ax.grid(True); ax.legend(fontsize=8)
 
     # Скорость
-    ax = axes[0, 1]
+    ax = axes1[0, 1]
     ax.plot(t, v, "g", lw=2, label="v(t)")
     ax.axhline(0.0, color="gray", ls="--", lw=1.0)
     ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
@@ -441,7 +559,7 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_title("Вертикальная скорость"); ax.grid(True); ax.legend(fontsize=8)
 
     # Масса
-    ax = axes[0, 2]
+    ax = axes1[0, 2]
     ax.plot(t, m, "r", lw=2, label="m(t)")
     ax.axhline(m_dry, color="orange", ls="--", lw=1.5, label="Сухая масса")
     ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
@@ -449,7 +567,7 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_title("Масса аппарата"); ax.grid(True); ax.legend(fontsize=8)
 
     # Управление
-    ax = axes[1, 0]
+    ax = axes1[1, 0]
     ax.step(t, beta, where="post", color="k", lw=2, label="beta(t)")
     ax.axhline(beta_m, color="red", ls="--", lw=1.2,
                label=f"beta_m = {beta_m:.4f} кг/с")
@@ -459,7 +577,7 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_title("Оптимальное управление (bang-bang)"); ax.grid(True); ax.legend(fontsize=8)
 
     # Гравитация
-    ax = axes[1, 1]
+    ax = axes1[1, 1]
     ax.plot(t, g_traj, "m", lw=2, label="g(h)")
     ax.axhline(g0, color="gray", ls="--", lw=1.2, label=f"g0 = {g0} м/с²")
     ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5)
@@ -467,7 +585,7 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_title("Ускорение свободного падения"); ax.grid(True); ax.legend(fontsize=8)
 
     # Фазовый портрет
-    ax = axes[1, 2]
+    ax = axes1[1, 2]
     sc = ax.scatter(v, h, c=t, cmap="viridis", s=12)
     plt.colorbar(sc, ax=ax, label="Время, с")
     ax.plot(v[0], h[0], "go", ms=10, label="Начало")
@@ -475,8 +593,75 @@ def plot_results(t_switch_opt, T_opt):
     ax.set_xlabel("Скорость, м/с"); ax.set_ylabel("Высота, м")
     ax.set_title("Фазовый портрет (h–v)"); ax.grid(True); ax.legend(fontsize=8)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+    fig1.tight_layout(rect=[0, 0, 1, 0.92])
+    fig1.savefig("lunar_states.png", dpi=150, bbox_inches="tight")
+
+    # ── Рисунок 2: сопряжённые переменные + функция переключения (2×2) ─
+    fig2, axes2 = plt.subplots(2, 2, figsize=(14, 10))
+    fig2.suptitle(
+        f"Сопряжённые переменные и функция переключения\n"
+        f"(Принцип минимума Понтрягина, t* = {t_switch_opt:.2f} с)",
+        fontsize=12
+    )
+
+    # psi_h — сопряжённая к высоте
+    ax = axes2[0, 0]
+    ax.plot(t, psi_h, color="steelblue", lw=2, label=r"$\psi_h$(t)")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с")
+    ax.axhline(0.0, color="gray", ls=":", lw=1.0)
+    ax.set_xlabel("Время, с")
+    ax.set_ylabel(r"$\psi_h$")
+    ax.set_title(r"Сопряжённая $\psi_h$ (к высоте h)")
+    ax.grid(True, alpha=0.5)
+    ax.legend(fontsize=9)
+
+    # psi_v — сопряжённая к скорости
+    ax = axes2[0, 1]
+    ax.plot(t, psi_v, color="darkorange", lw=2, label=r"$\psi_v$(t)")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с")
+    ax.axhline(0.0, color="gray", ls=":", lw=1.0)
+    ax.set_xlabel("Время, с")
+    ax.set_ylabel(r"$\psi_v$")
+    ax.set_title(r"Сопряжённая $\psi_v$ (к скорости v)")
+    ax.grid(True, alpha=0.5)
+    ax.legend(fontsize=9)
+
+    # psi_m — сопряжённая к массе
+    ax = axes2[1, 0]
+    ax.plot(t, psi_m, color="darkgreen", lw=2, label=r"$\psi_m$(t)")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с")
+    ax.axhline(0.0, color="gray", ls=":", lw=1.0)
+    ax.set_xlabel("Время, с")
+    ax.set_ylabel(r"$\psi_m$")
+    ax.set_title(r"Сопряжённая $\psi_m$ (к массе m)")
+    ax.grid(True, alpha=0.5)
+    ax.legend(fontsize=9)
+
+    # sigma — функция переключения
+    ax = axes2[1, 1]
+    ax.plot(t, sigma, color="crimson", lw=2.5, label=r"$\sigma(t) = \psi_v J/m - \psi_m$")
+    ax.axhline(0.0, color="black", ls="-", lw=1.5, alpha=0.7, label="sigma = 0")
+    ax.axvline(t_switch_opt, color="red", ls="--", lw=1.5,
+               label=f"t* = {t_switch_opt:.1f} с (переключение)")
+    # Закрашиваем зоны управления
+    ax.fill_between(t, sigma, 0, where=(t < t_switch_opt),
+                    alpha=0.15, color="gray", label="beta = 0 (двиг. выкл.)")
+    ax.fill_between(t, sigma, 0, where=(t >= t_switch_opt),
+                    alpha=0.15, color="crimson", label="beta = beta_m (двиг. вкл.)")
+    ax.set_xlabel("Время, с")
+    ax.set_ylabel(r"$\sigma(t)$")
+    ax.set_title(r"Функция переключения $\sigma(t)$")
+    ax.grid(True, alpha=0.5)
+    ax.legend(fontsize=8)
+
+    fig2.tight_layout(rect=[0, 0, 1, 0.93])
+    fig2.savefig("lunar_conjugate.png", dpi=150, bbox_inches="tight")
+
     plt.show()
+    print("\nГрафики сохранены: lunar_states.png, lunar_conjugate.png")
 
 
 # ─────────────────────────────────────────────────────────────────────
