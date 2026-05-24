@@ -1,8 +1,8 @@
 """
 Симуляция ориентации спутника
 ==============================
-Динамика вращения (уравнения Эйлера) + кинематика (кватернион) +
-орбитальная механика (гравитация Земли) + гравитационный градиентный момент.
+Динамика вращения (Эйлер) + кинематика (кватернион) +
+орбитальная механика + гравитационный градиентный момент.
 ПД-регулятор по кватерниону.
 
 Зависимости: numpy, matplotlib
@@ -30,9 +30,9 @@ Jinv = np.diag([1/100, 1/210, 1/70])
 
 def quat_to_rot_mat(q0, q1, q2, q3):
     return np.array([
-        [q0*q0+q1*q1-q2*q2-q3*q3, 2*(q1*q2+q0*q3),           2*(q1*q3-q0*q2)          ],
-        [2*(q1*q2-q0*q3),          q0*q0-q1*q1+q2*q2-q3*q3,  2*(q2*q3+q0*q1)          ],
-        [2*(q1*q3+q0*q2),          2*(q2*q3-q0*q1),           q0*q0-q1*q1-q2*q2+q3*q3 ],
+        [q0*q0+q1*q1-q2*q2-q3*q3, 2*(q1*q2+q0*q3),          2*(q1*q3-q0*q2)         ],
+        [2*(q1*q2-q0*q3),          q0*q0-q1*q1+q2*q2-q3*q3, 2*(q2*q3+q0*q1)         ],
+        [2*(q1*q3+q0*q2),          2*(q2*q3-q0*q1),          q0*q0-q1*q1-q2*q2+q3*q3],
     ])
 
 
@@ -101,7 +101,7 @@ def simulate():
          0.0, v0*math.cos(inc), v0*math.sin(inc),
     ])
 
-    t, tk, h = 0.0, 300.0, 0.05
+    t, tk, h = 0.0, 10_000.0, 0.01
     Kp, Kd   = 10.0, 40.0
 
     data = {k: [] for k in [
@@ -119,70 +119,55 @@ def simulate():
         t += h
 
         data["t"].append(t)
-        data["w1"].append(x[0]*TO_DEG);  data["w2"].append(x[1]*TO_DEG);  data["w3"].append(x[2]*TO_DEG)
-        data["q0"].append(x[3]);         data["q1"].append(x[4])
-        data["q2"].append(x[5]);         data["q3"].append(x[6])
-        data["rx"].append(x[7]/1e3);     data["ry"].append(x[8]/1e3);     data["rz"].append(x[9]/1e3)
-        data["vx"].append(x[10]);        data["vy"].append(x[11]);        data["vz"].append(x[12])
+        data["w1"].append(x[0]*TO_DEG); data["w2"].append(x[1]*TO_DEG); data["w3"].append(x[2]*TO_DEG)
+        data["q0"].append(x[3]);        data["q1"].append(x[4])
+        data["q2"].append(x[5]);        data["q3"].append(x[6])
+        data["rx"].append(x[7]/1e3);    data["ry"].append(x[8]/1e3);    data["rz"].append(x[9]/1e3)
+        data["vx"].append(x[10]);       data["vy"].append(x[11]);       data["vz"].append(x[12])
         data["alt"].append((np.linalg.norm(x[7:10]) - RE) / 1e3)
         data["speed"].append(np.linalg.norm(x[10:13]))
-        data["mgg1"].append(mgg[0]);     data["mgg2"].append(mgg[1]);     data["mgg3"].append(mgg[2])
+        data["mgg1"].append(mgg[0]);    data["mgg2"].append(mgg[1]);    data["mgg3"].append(mgg[2])
 
     return {k: np.array(v) for k, v in data.items()}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  Графики
+#  Графики — каждый в отдельном окне
 # ═══════════════════════════════════════════════════════════════════════════
 
 def plot_all(data):
     ts = data["t"]
 
     charts = [
-        # (ключ,        заголовок,            единица)
-        ("w1",    "Угловая скорость ω₁",  "°/с"),
-        ("w2",    "Угловая скорость ω₂",  "°/с"),
-        ("w3",    "Угловая скорость ω₃",  "°/с"),
-        ("q0",    "Кватернион q₀",         ""),
-        ("q1",    "Кватернион q₁",         ""),
-        ("q2",    "Кватернион q₂",         ""),
-        ("q3",    "Кватернион q₃",         ""),
-        ("rx",    "Положение rx",          "км"),
-        ("ry",    "Положение ry",          "км"),
-        ("rz",    "Положение rz",          "км"),
-        ("vx",    "Скорость vx",           "м/с"),
-        ("vy",    "Скорость vy",           "м/с"),
-        ("vz",    "Скорость vz",           "м/с"),
-        ("alt",   "Высота орбиты",         "км"),
-        ("speed", "Орбитальная скорость",  "м/с"),
-        ("mgg1",  "Mgg_x (гр. градиент)", "Н·м"),
-        ("mgg2",  "Mgg_y (гр. градиент)", "Н·м"),
-        ("mgg3",  "Mgg_z (гр. градиент)", "Н·м"),
+        ("w1",    "Угловая скорость ω₁",   "°/с",  "#f38ba8"),
+        ("w2",    "Угловая скорость ω₂",   "°/с",  "#a6e3a1"),
+        ("w3",    "Угловая скорость ω₃",   "°/с",  "#89b4fa"),
+        ("q0",    "Кватернион q₀",         "",     "#f9e2af"),
+        ("q1",    "Кватернион q₁",         "",     "#f38ba8"),
+        ("q2",    "Кватернион q₂",         "",     "#a6e3a1"),
+        ("q3",    "Кватернион q₃",         "",     "#89b4fa"),
+        ("rx",    "Положение rx",          "км",   "#fab387"),
+        ("ry",    "Положение ry",          "км",   "#cba6f7"),
+        ("rz",    "Положение rz",          "км",   "#94e2d5"),
+        ("vx",    "Скорость vx",           "м/с",  "#fab387"),
+        ("vy",    "Скорость vy",           "м/с",  "#cba6f7"),
+        ("vz",    "Скорость vz",           "м/с",  "#94e2d5"),
+        ("alt",   "Высота орбиты",         "км",   "#f9e2af"),
+        ("speed", "Орбитальная скорость",  "м/с",  "#74c7ec"),
+        ("mgg1",  "Mgg_x (гр. градиент)", "Н·м",  "#f38ba8"),
+        ("mgg2",  "Mgg_y (гр. градиент)", "Н·м",  "#a6e3a1"),
+        ("mgg3",  "Mgg_z (гр. градиент)", "Н·м",  "#89b4fa"),
     ]
 
-    # 18 графиков на 6 строк × 3 столбца
-    fig, axes = plt.subplots(6, 3, figsize=(18, 20))
-    fig.suptitle("Симуляция ориентации спутника", fontsize=16, fontweight="bold")
-
-    colors = [
-        "#f38ba8","#a6e3a1","#89b4fa",
-        "#f9e2af","#f38ba8","#a6e3a1",
-        "#89b4fa","#fab387","#cba6f7",
-        "#94e2d5","#fab387","#cba6f7",
-        "#94e2d5","#f9e2af","#74c7ec",
-        "#f38ba8","#a6e3a1","#89b4fa",
-    ]
-
-    for ax, (key, title, unit), color in zip(axes.flat, charts, colors):
+    for key, title, unit, color in charts:
+        fig, ax = plt.subplots(figsize=(12, 5))
         ax.plot(ts, data[key], color=color, linewidth=1.0)
-        ax.set_title(title, fontsize=10)
-        ax.set_xlabel("Время, с", fontsize=8)
-        ax.set_ylabel(unit, fontsize=8)
-        ax.tick_params(labelsize=7)
-        ax.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.show()
+        ax.set_title(title, fontsize=13)
+        ax.set_xlabel("Время, с")
+        ax.set_ylabel(unit)
+        ax.grid(True, alpha=0.35)
+        plt.tight_layout()
+        plt.show()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -192,5 +177,5 @@ def plot_all(data):
 if __name__ == "__main__":
     print("Симуляция...")
     data = simulate()
-    print(f"Готово: {len(data['t'])} точек, t_конец={data['t'][-1]:.1f} с")
+    print(f"Время моделирования ={data['t'][-1]:.1f} с")
     plot_all(data)
