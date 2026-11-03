@@ -805,7 +805,7 @@ if __name__ == '__main__':
         pool.terminate()  # На всякий случай убиваем все процессы
         pool.join()  # Ждем завершения
 
-    matplotlib.use('Qt5Agg')  # или 'TkAgg' если с Qt проблемы
+    #matplotlib.use('Qt5Agg')  # или 'TkAgg' если с Qt проблемы
     fig = plt.figure(dpi=300)
     ax = fig.add_subplot(111, projection='3d')
 

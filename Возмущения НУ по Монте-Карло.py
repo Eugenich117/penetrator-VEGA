@@ -383,7 +383,7 @@ def compute_trajectory(i, equations, dx, pipe_conn):
     wind_angle = 0
     while R >= Rb:
         V_wind, wind_angle, next_update_time = wind(R - Rb, t, next_update_time, V_wind, wind_angle)
-        omega_b = 2.9926 * 10 ** -7  # Угловаяскоростьвращенияпланеты,рад/с
+        omega_b = 2.9926 * 10 ** -7  # Угловая скорость вращения планеты,рад/с
         V_sound = v_sound(R - Rb)
         ro = Get_ro(R - Rb)
         Cxa = Cx(V, V_sound)
